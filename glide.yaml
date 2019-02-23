@@ -1,0 +1,41 @@
+package: github.com/daiguadaidai/parser
+import:
+- package: github.com/cznic/mathutil
+- package: github.com/cznic/parser
+  subpackages:
+  - yacc
+- package: github.com/cznic/sortutil
+- package: github.com/cznic/strutil
+- package: github.com/cznic/y
+- package: github.com/pingcap/errors
+  version: v0.11.0
+- package: github.com/pingcap/tipb
+  subpackages:
+  - go-tipb
+- package: github.com/pkg/errors
+  version: v0.8.1
+- package: github.com/sirupsen/logrus
+  version: v1.3.0
+- package: golang.org/x/text
+  repo: https://github.com/golang/text
+  vcs: git
+  subpackages:
+  - charmap
+  - japanese
+  - korean
+  - simplifiedchinese
+  - traditionalchinese
+  - unicode
+testImport:
+- package: github.com/pingcap/check
+- package: golang.org/x/crypto
+  repo: https://github.com/golang/crypto
+  vcs: git
+  subpackages:
+  - ssh/terminal
+- package: golang.org/x/sys
+  repo: https://github.com/golang/sys
+  vcs: git
+  subpackages:
+  - unix
+  - windows
