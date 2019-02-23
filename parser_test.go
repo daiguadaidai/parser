@@ -19,16 +19,16 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/daiguadaidai/parser/ast"
+	"github.com/daiguadaidai/parser/charset"
+	. "github.com/daiguadaidai/parser/format"
+	"github.com/daiguadaidai/parser/model"
+	"github.com/daiguadaidai/parser/mysql"
+	"github.com/daiguadaidai/parser/terror"
 	"github.com/daiguadaidai/tidb/types"
 	"github.com/daiguadaidai/tidb/types/parser_driver"
 	. "github.com/pingcap/check"
 	"github.com/pingcap/errors"
-	"github.com/pingcap/parser/ast"
-	"github.com/pingcap/parser/charset"
-	. "github.com/pingcap/parser/format"
-	"github.com/pingcap/parser/model"
-	"github.com/pingcap/parser/mysql"
-	"github.com/pingcap/parser/terror"
 )
 
 func TestT(t *testing.T) {
@@ -2929,7 +2929,7 @@ func (wfc *windowFrameBoundChecker) Leave(inNode ast.Node) (node ast.Node, ok bo
 }
 
 // For issue #51
-// See https://github.com/pingcap/parser/pull/51 for details
+// See https://github.com/daiguadaidai/parser/pull/51 for details
 func (s *testParserSuite) TestVisitFrameBound(c *C) {
 	parser := New()
 	parser.EnableWindowFunc(true)
@@ -2974,7 +2974,7 @@ func (s *testParserSuite) TestFieldText(c *C) {
 	}
 }
 
-// See https://github.com/pingcap/parser/issue/94
+// See https://github.com/daiguadaidai/parser/issue/94
 func (s *testParserSuite) TestQuotedSystemVariables(c *C) {
 	parser := New()
 
@@ -3035,7 +3035,7 @@ func (s *testParserSuite) TestQuotedSystemVariables(c *C) {
 	}
 }
 
-// See https://github.com/pingcap/parser/issue/95
+// See https://github.com/daiguadaidai/parser/issue/95
 func (s *testParserSuite) TestQuotedVariableColumnName(c *C) {
 	parser := New()
 

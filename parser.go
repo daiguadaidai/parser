@@ -32,13 +32,13 @@ import __yyfmt__ "fmt"
 import (
 	"strings"
 
-	"github.com/pingcap/parser/ast"
-	"github.com/pingcap/parser/auth"
-	"github.com/pingcap/parser/charset"
-	"github.com/pingcap/parser/model"
-	"github.com/pingcap/parser/mysql"
-	"github.com/pingcap/parser/opcode"
-	"github.com/pingcap/parser/types"
+	"github.com/daiguadaidai/parser/ast"
+	"github.com/daiguadaidai/parser/auth"
+	"github.com/daiguadaidai/parser/charset"
+	"github.com/daiguadaidai/parser/model"
+	"github.com/daiguadaidai/parser/mysql"
+	"github.com/daiguadaidai/parser/opcode"
+	"github.com/daiguadaidai/parser/types"
 )
 
 type yySymType struct {

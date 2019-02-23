@@ -17,11 +17,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/daiguadaidai/parser"
+	. "github.com/daiguadaidai/parser/ast"
+	. "github.com/daiguadaidai/parser/format"
 	"github.com/daiguadaidai/tidb/types/parser_driver"
 	. "github.com/pingcap/check"
-	"github.com/pingcap/parser"
-	. "github.com/pingcap/parser/ast"
-	. "github.com/pingcap/parser/format"
 )
 
 var _ = Suite(&testCacheableSuite{})

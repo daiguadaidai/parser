@@ -18,10 +18,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/daiguadaidai/parser/auth"
+	"github.com/daiguadaidai/parser/mysql"
+	"github.com/daiguadaidai/parser/types"
 	"github.com/pingcap/errors"
-	"github.com/pingcap/parser/auth"
-	"github.com/pingcap/parser/mysql"
-	"github.com/pingcap/parser/types"
 	"github.com/pingcap/tipb/go-tipb"
 )
 

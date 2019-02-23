@@ -19,9 +19,9 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	. "github.com/daiguadaidai/parser/format"
+	"github.com/daiguadaidai/parser/terror"
 	"github.com/pingcap/errors"
-	. "github.com/pingcap/parser/format"
-	"github.com/pingcap/parser/terror"
 )
 
 // UserIdentity represents username and hostname.

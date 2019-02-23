@@ -14,9 +14,9 @@
 package ast_test
 
 import (
+	. "github.com/daiguadaidai/parser/ast"
 	_ "github.com/daiguadaidai/tidb/types/parser_driver"
 	. "github.com/pingcap/check"
-	. "github.com/pingcap/parser/ast"
 )
 
 var _ = Suite(&testExpressionsSuite{})

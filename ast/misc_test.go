@@ -14,10 +14,10 @@
 package ast_test
 
 import (
+	"github.com/daiguadaidai/parser"
+	. "github.com/daiguadaidai/parser/ast"
+	"github.com/daiguadaidai/parser/auth"
 	. "github.com/pingcap/check"
-	"github.com/pingcap/parser"
-	. "github.com/pingcap/parser/ast"
-	"github.com/pingcap/parser/auth"
 )
 
 var _ = Suite(&testMiscSuite{})

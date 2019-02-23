@@ -17,8 +17,8 @@ import (
 	"fmt"
 	"io"
 
+	. "github.com/daiguadaidai/parser/format"
 	"github.com/pingcap/errors"
-	. "github.com/pingcap/parser/format"
 )
 
 // Op is opcode type.

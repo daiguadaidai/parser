@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/daiguadaidai/parser/mysql"
 	"github.com/pingcap/errors"
-	"github.com/pingcap/parser/mysql"
 	log "github.com/sirupsen/logrus"
 )
 

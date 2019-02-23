@@ -75,7 +75,7 @@ github.com/pingcap/gofail v0.0.0-20181217135706-6a951c1e42c3/go.mod h1:DazNTg0PT
 github.com/pingcap/goleveldb v0.0.0-20171020122428-b9ff6c35079e/go.mod h1:O17XtbryoCJhkKGbT62+L2OlrniwqiGLSqrmdHCMzZw=
 github.com/pingcap/kvproto v0.0.0-20190131052532-7e329e0c9e32/go.mod h1:QMdbTAXCHzzygQzqcG9uVUgU2fKeSN1GmfMiykdSzzY=
 github.com/pingcap/log v0.0.0-20190214045112-b37da76f67a7/go.mod h1:xsfkWVaFVV5B8e1K9seWfyJWFrIhbtUTAD8NV1Pq3+w=
-github.com/pingcap/parser v0.0.0-20190218033509-9545f168ae97/go.mod h1:1FNvfp9+J0wvc4kl8eGNh7Rqrxveg15jJoWo/a0uHwA=
+github.com/daiguadaidai/parser v0.0.0-20190218033509-9545f168ae97/go.mod h1:1FNvfp9+J0wvc4kl8eGNh7Rqrxveg15jJoWo/a0uHwA=
 github.com/pingcap/pd v2.1.0-rc.4+incompatible/go.mod h1:nD3+EoYes4+aNNODO99ES59V83MZSI+dFbhyr667a0E=
 github.com/daiguadaidai/tidb v0.0.0-20190218065808-69472bd1a6e9 h1:mFVcXY6yIB+vg0I7VsBFEjkvcSHFOA0vvwO7BcwA0Uo=
 github.com/daiguadaidai/tidb v0.0.0-20190218065808-69472bd1a6e9/go.mod h1:R6ZYnRcDpzT9N4wQxfOhGqhCdkrLIC1UNxxJAC2xWjM=

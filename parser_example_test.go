@@ -15,8 +15,8 @@ package parser_test
 
 import (
 	"fmt"
+	"github.com/daiguadaidai/parser"
 	_ "github.com/daiguadaidai/tidb/types/parser_driver"
-	"github.com/pingcap/parser"
 )
 
 // This example show how to parse a text sql into ast.

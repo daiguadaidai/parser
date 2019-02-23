@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"strings"
 
-	. "github.com/pingcap/parser/format"
+	. "github.com/daiguadaidai/parser/format"
 	"github.com/pkg/errors"
 )
 

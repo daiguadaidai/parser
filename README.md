@@ -1,12 +1,12 @@
 # Parser
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/pingcap/parser)](https://goreportcard.com/report/github.com/pingcap/parser) [![CircleCI Status](https://circleci.com/gh/pingcap/parser.svg?style=shield)](https://circleci.com/gh/pingcap/parser) [![GoDoc](https://godoc.org/github.com/pingcap/parser?status.svg)](https://godoc.org/github.com/pingcap/parser)
+[![Go Report Card](https://goreportcard.com/badge/github.com/daiguadaidai/parser)](https://goreportcard.com/report/github.com/daiguadaidai/parser) [![CircleCI Status](https://circleci.com/gh/pingcap/parser.svg?style=shield)](https://circleci.com/gh/pingcap/parser) [![GoDoc](https://godoc.org/github.com/daiguadaidai/parser?status.svg)](https://godoc.org/github.com/daiguadaidai/parser)
 
 TiDB SQL Parser
 
 ## How to use it
 
-See [https://godoc.org/github.com/pingcap/parser](https://godoc.org/github.com/pingcap/parser)
+See [https://godoc.org/github.com/daiguadaidai/parser](https://godoc.org/github.com/daiguadaidai/parser)
 
 ## How to update parser for TiDB
 
@@ -28,7 +28,7 @@ Suppose the forked repository is `https://github.com/your-repo/parser`.
 1. In your TiDB repository, execute the `replace` instruction to make your parser changes take effect:
 
     ```
-    GO111MODULE=on go mod edit -replace github.com/pingcap/parser=github.com/your-repo/parser@your-branch
+    GO111MODULE=on go mod edit -replace github.com/daiguadaidai/parser=github.com/your-repo/parser@your-branch
     ```
 
 2. `make dev` to run CI in TiDB.
@@ -46,7 +46,7 @@ This PR will be reviewed, and if everything goes well, it will be merged.
 In your TiDB pull request, modify the `go.mod` file manually or use this command:
 
 ```
-GO111MODULE=on go get -u github.com/pingcap/parser@master
+GO111MODULE=on go get -u github.com/daiguadaidai/parser@master
 ```
 
 Make sure the `replace` instruction is changed back to the `require` instruction and the version is the latest.
