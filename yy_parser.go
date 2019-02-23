@@ -20,10 +20,10 @@ import (
 	"strconv"
 	"unicode"
 
-	"github.com/daiguadaidai/parser/ast"
-	"github.com/daiguadaidai/parser/mysql"
-	"github.com/daiguadaidai/parser/terror"
 	"github.com/pingcap/errors"
+	"github.com/pingcap/parser/ast"
+	"github.com/pingcap/parser/mysql"
+	"github.com/pingcap/parser/terror"
 )
 
 const (
@@ -81,7 +81,7 @@ func New() *Parser {
 		ast.NewParamMarkerExpr == nil ||
 		ast.NewHexLiteral == nil ||
 		ast.NewBitLiteral == nil {
-		panic("no parser driver (forgotten import?) https://github.com/daiguadaidai/parser/issues/43")
+		panic("no parser driver (forgotten import?) https://github.com/pingcap/parser/issues/43")
 	}
 
 	return &Parser{

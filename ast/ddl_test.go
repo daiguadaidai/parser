@@ -14,8 +14,8 @@
 package ast_test
 
 import (
-	. "github.com/daiguadaidai/parser/ast"
 	. "github.com/pingcap/check"
+	. "github.com/pingcap/parser/ast"
 )
 
 var _ = Suite(&testDDLSuite{})
