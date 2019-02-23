@@ -19,56 +19,51 @@ func init() {
 }
 
 func printTestFunc() {
-	println(1)  // Comment1
-	if 2 == 2 { // Comment2
-		println(3) // Comment3
-	}
-	switch 5 {
-	case 6:
-		println(6) // Comment6
-		println(7)
-	}
-	switch interface{}(9).(type) { // Comment9
-	case int:
-		println(10)
-		println(11)
-	}
-	select {
-	case <-(chan bool)(nil):
-		println(14)
-		println(15)
-	default:
-		println(16)
-		println(17)
-	}
-	println(19,
-		20)
-	_ = func() {
-		println(21)
-		println(22)
-	}
+    println(1)           // Comment1
+    if 2 == 2 {          // Comment2
+        println(3)       // Comment3
+    }
+    switch 5 {
+    case 6: println(6)   // Comment6
+        println(7)
+    }
+    switch interface{}(9).(type) {// Comment9
+    case int: println(10)
+        println(11)
+    }
+    select {
+    case <-(chan bool)(nil): println(14)
+        println(15)
+    default: println(16)
+        println(17)
+    }
+    println(19,
+        20)
+    _ = func() { println(21)
+        println(22)
+    }
 }
 
 var printLineTests = []struct {
-	line   int
-	output string
+    line   int
+    output string
 }{
-	{1, "println(1) // Comment1"},
-	{2, "if 2 == 2 { // Comment2\n    ...\n}"},
-	{3, "println(3) // Comment3"},
-	{5, "switch 5 {\n...\n}"},
-	{6, "case 6:\n    println(6) // Comment6\n    ..."},
-	{7, "println(7)"},
-	{9, "switch interface{}(9).(type) { // Comment9\n...\n}"},
-	{10, "case int:\n    println(10)\n    ..."},
-	{14, "case <-(chan bool)(nil):\n    println(14)\n    ..."},
-	{15, "println(15)"},
-	{16, "default:\n    println(16)\n    ..."},
-	{17, "println(17)"},
-	{19, "println(19,\n    20)"},
-	{20, "println(19,\n    20)"},
-	{21, "_ = func() {\n    println(21)\n    println(22)\n}"},
-	{22, "println(22)"},
+    {1, "println(1) // Comment1"},
+    {2, "if 2 == 2 { // Comment2\n    ...\n}"},
+    {3, "println(3) // Comment3"},
+    {5, "switch 5 {\n...\n}"},
+    {6, "case 6:\n    println(6) // Comment6\n    ..."},
+    {7, "println(7)"},
+    {9, "switch interface{}(9).(type) { // Comment9\n...\n}"},
+    {10, "case int:\n    println(10)\n    ..."},
+    {14, "case <-(chan bool)(nil):\n    println(14)\n    ..."},
+    {15, "println(15)"},
+    {16, "default:\n    println(16)\n    ..."},
+    {17, "println(17)"},
+    {19, "println(19,\n    20)"},
+    {20, "println(19,\n    20)"},
+    {21, "_ = func() {\n    println(21)\n    println(22)\n}"},
+    {22, "println(22)"},
 }
 
 func (s *PrinterS) TestPrintLine(c *C) {
