@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/daiguadaidai/parser/terror"
-	pumpcli "github.com/daiguadaidai/tidb-tools/tidb-binlog/pump_client"
 	"github.com/daiguadaidai/tidb/ddl"
 	"github.com/daiguadaidai/tidb/domain"
 	"github.com/daiguadaidai/tidb/kv"
@@ -37,6 +36,7 @@ import (
 	"github.com/daiguadaidai/tidb/util/testkit"
 	. "github.com/pingcap/check"
 	"github.com/pingcap/errors"
+	pumpcli "github.com/pingcap/tidb-tools/tidb-binlog/pump_client"
 	binlog "github.com/pingcap/tipb/go-binlog"
 	"google.golang.org/grpc"
 )

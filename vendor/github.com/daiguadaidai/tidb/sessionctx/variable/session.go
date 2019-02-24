@@ -26,7 +26,6 @@ import (
 	"github.com/daiguadaidai/parser/auth"
 	"github.com/daiguadaidai/parser/mysql"
 	"github.com/daiguadaidai/parser/terror"
-	pumpcli "github.com/daiguadaidai/tidb-tools/tidb-binlog/pump_client"
 	"github.com/daiguadaidai/tidb/config"
 	"github.com/daiguadaidai/tidb/kv"
 	"github.com/daiguadaidai/tidb/meta/autoid"
@@ -38,6 +37,7 @@ import (
 	"github.com/daiguadaidai/tidb/util/timeutil"
 	"github.com/klauspost/cpuid"
 	"github.com/pingcap/errors"
+	pumpcli "github.com/pingcap/tidb-tools/tidb-binlog/pump_client"
 )
 
 const (

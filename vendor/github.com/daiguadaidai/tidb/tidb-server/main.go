@@ -26,7 +26,6 @@ import (
 
 	"github.com/daiguadaidai/parser/mysql"
 	"github.com/daiguadaidai/parser/terror"
-	pumpcli "github.com/daiguadaidai/tidb-tools/tidb-binlog/pump_client"
 	"github.com/daiguadaidai/tidb/config"
 	"github.com/daiguadaidai/tidb/ddl"
 	"github.com/daiguadaidai/tidb/domain"
@@ -53,6 +52,7 @@ import (
 	"github.com/pingcap/errors"
 	"github.com/pingcap/log"
 	pd "github.com/pingcap/pd/client"
+	pumpcli "github.com/pingcap/tidb-tools/tidb-binlog/pump_client"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/push"
 	"github.com/struCoder/pidusage"

@@ -28,7 +28,6 @@ import (
 	"github.com/daiguadaidai/parser/model"
 	"github.com/daiguadaidai/parser/mysql"
 	"github.com/daiguadaidai/parser/terror"
-	pumpcli "github.com/daiguadaidai/tidb-tools/tidb-binlog/pump_client"
 	"github.com/daiguadaidai/tidb/ddl/util"
 	"github.com/daiguadaidai/tidb/infoschema"
 	"github.com/daiguadaidai/tidb/kv"
@@ -42,6 +41,7 @@ import (
 	tidbutil "github.com/daiguadaidai/tidb/util"
 	"github.com/ngaut/pools"
 	"github.com/pingcap/errors"
+	pumpcli "github.com/pingcap/tidb-tools/tidb-binlog/pump_client"
 	log "github.com/sirupsen/logrus"
 	"github.com/twinj/uuid"
 )

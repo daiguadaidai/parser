@@ -1,5 +1,5 @@
 hash: 4f22c2a842fdecc8ca23517a9c6cb0c04a31fac4df92d6b1840c2abad6b0c39a
-updated: 2019-02-23T23:54:08.741525867+08:00
+updated: 2019-02-24T20:12:27.579913629+08:00
 imports:
 - name: github.com/cznic/golex
   version: 4ab7c5e190e49208c823ce8ec803aa39e6a4b31a
@@ -68,7 +68,7 @@ imports:
   - unicode
 testImports:
 - name: github.com/daiguadaidai/tidb
-  version: 96756a14e1671ff2c3de49d3ddd88197ba0bfd34
+  version: 54551c4d40477317cd6613d5a71ebf85dc83b27b
   subpackages:
   - sessionctx/stmtctx
   - types
@@ -85,7 +85,7 @@ testImports:
 - name: github.com/pingcap/check
   version: 1c287c953996ab3a0bf535dba9d53d809d3dc0b6
 - name: github.com/shirou/gopsutil
-  version: 368a8659109f0949d669d454ef359c385b6569e3
+  version: 41e774419f96c0cd401ba19b1d1d245cd25e4b2e
   subpackages:
   - internal/common
   - mem
