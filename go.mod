@@ -7,7 +7,7 @@ require (
 	github.com/cznic/sortutil v0.0.0-20181122101858-f5f958428db8
 	github.com/cznic/strutil v0.0.0-20181122101858-275e90344537
 	github.com/cznic/y v0.0.0-20181122101901-b05e8c2e8d7b
-	github.com/daiguadaidai/tidb v0.0.0-20190224132433-f7e9bfe170d0
+	github.com/daiguadaidai/tidb v0.0.0-20190326123116-8c11d655d63a
 	github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8
 	github.com/pingcap/errors v0.11.0
 	github.com/pingcap/tipb v0.0.0-20190107072121-abbec73437b7

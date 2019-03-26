@@ -41,8 +41,11 @@ github.com/cznic/strutil v0.0.0-20181122101858-275e90344537/go.mod h1:AHHPPPXTw0
 github.com/cznic/y v0.0.0-20181122101901-b05e8c2e8d7b h1:gvFsf4zJcnW6GRN+HPGTxwuw+7sTwzmoeoBQQCZDEnk=
 github.com/cznic/y v0.0.0-20181122101901-b05e8c2e8d7b/go.mod h1:1rk5VM7oSnA4vjp+hrLQ3HWHa+Y4yPCa3/CsJrcNnvs=
 github.com/daiguadaidai/parser v0.0.0-20190224121346-e033e6f9ac8f/go.mod h1:Dpuw7C+oYyTuW56x7VATl3165LoTcUK02TO1bpneAHs=
+github.com/daiguadaidai/parser v0.0.0-20190307140446-07810a2fc658/go.mod h1:Dpuw7C+oYyTuW56x7VATl3165LoTcUK02TO1bpneAHs=
 github.com/daiguadaidai/tidb v0.0.0-20190224132433-f7e9bfe170d0 h1:BFbcs0KLoyGc/9w47gc2rVmaVW8BUwFb25HwbyftQjY=
 github.com/daiguadaidai/tidb v0.0.0-20190224132433-f7e9bfe170d0/go.mod h1:VqoHalPv+4cRfeSC+h4OKDDspiYmAJ9PgION4lHiorU=
+github.com/daiguadaidai/tidb v0.0.0-20190326123116-8c11d655d63a h1:xOw0BaS/yo8rdB7zrNQ7YZ7Ghm6U7CgAKi+ITWhpB0g=
+github.com/daiguadaidai/tidb v0.0.0-20190326123116-8c11d655d63a/go.mod h1:src+WuTHYRYknlU6NnHxbB/kEA4oRuqGh8Pwl4no72w=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -147,6 +150,7 @@ github.com/pingcap/kvproto v0.0.0-20190215154024-7f2fc73ef562 h1:32oF1/8lVnBR2JV
 github.com/pingcap/kvproto v0.0.0-20190215154024-7f2fc73ef562/go.mod h1:QMdbTAXCHzzygQzqcG9uVUgU2fKeSN1GmfMiykdSzzY=
 github.com/pingcap/log v0.0.0-20190214045112-b37da76f67a7 h1:kOHAMalwF69bJrtWrOdVaCSvZjLucrJhP4NQKIu6uM4=
 github.com/pingcap/log v0.0.0-20190214045112-b37da76f67a7/go.mod h1:xsfkWVaFVV5B8e1K9seWfyJWFrIhbtUTAD8NV1Pq3+w=
+github.com/pingcap/parser v0.0.0-20190321052000-f9a452f8f24e/go.mod h1:1FNvfp9+J0wvc4kl8eGNh7Rqrxveg15jJoWo/a0uHwA=
 github.com/pingcap/pd v2.1.3+incompatible h1:KleGpnoOxIt9v9QbOYac24X7bLE0qwcSqARvuYEEooA=
 github.com/pingcap/pd v2.1.3+incompatible/go.mod h1:nD3+EoYes4+aNNODO99ES59V83MZSI+dFbhyr667a0E=
 github.com/pingcap/tidb-tools v2.1.4+incompatible h1:dkB4FMJcSk9GYRB2ICupU/lsTLf4mHLfkBE6fAsLdJ4=
