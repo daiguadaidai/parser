@@ -27,7 +27,7 @@ import (
 	"github.com/daiguadaidai/parser/mysql"
 	"github.com/daiguadaidai/parser/terror"
 	"github.com/daiguadaidai/tidb/types"
-	"github.com/daiguadaidai/tidb/types/parser_driver"
+	driver "github.com/daiguadaidai/tidb/types/parser_driver"
 	. "github.com/pingcap/check"
 	"github.com/pingcap/errors"
 )
