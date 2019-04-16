@@ -203,6 +203,7 @@ import (
 	primary			"PRIMARY"
 	procedure		"PROCEDURE"
 	shardRowIDBits		"SHARD_ROW_ID_BITS"
+	preSplitRegions		"PRE_SPLIT_REGIONS"
 	rangeKwd		"RANGE"
 	rank			"RANK"
 	read			"READ"
@@ -6846,6 +6847,10 @@ TableOption:
 	{
 		$$ = &ast.TableOption{Tp: ast.TableOptionShardRowID, UintValue: $3.(uint64)}
 	}
+|	"PRE_SPLIT_REGIONS" EqOpt LengthNum
+   	{
+   		$$ = &ast.TableOption{Tp: ast.TableOptionPreSplitRegion, UintValue: $3.(uint64)}
+   	}
 |	"PACK_KEYS" EqOpt StatsPersistentVal
 	{
 		// Parse it but will ignore it.
