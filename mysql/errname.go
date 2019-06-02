@@ -891,6 +891,7 @@ var MySQLErrName = map[uint16]string{
 	ErrInvalidTypeForJSON:                                    "Invalid data type for JSON data in argument %d to function %s; a JSON string or JSON type is required.",
 	ErrInvalidJSONPathWildcard:                               "In this situation, path expressions may not contain the * and ** tokens.",
 	ErrInvalidJSONContainsPathType:                           "The second argument can only be either 'one' or 'all'.",
+	ErrInvalidJSONPathArrayCell:                              "A path expression is not a path to a cell in an array.",
 	ErrJSONUsedAsKey:                                         "JSON column '%-.192s' cannot be used in key specification.",
 	ErrWindowNoSuchWindow:                                    "Window name '%s' is not defined.",
 	ErrWindowCircularityInWindowGraph:                        "There is a circularity in the window dependency graph.",
