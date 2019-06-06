@@ -533,6 +533,7 @@ import (
 	tidbSMJ		"TIDB_SMJ"
 	tidbINLJ	"TIDB_INLJ"
 	split		"SPLIT"
+	regions         "REGIONS"
 
 	builtinAddDate
 	builtinBitAnd
@@ -657,7 +658,7 @@ import (
 	RevokeStmt			"Revoke statement"
 	RevokeRoleStmt      "Revoke role statement"
 	RollbackStmt			"ROLLBACK statement"
-	SplitIndexRegionStmt		"Split index region statement"
+	SplitRegionStmt		"Split index region statement"
 	SetStmt				"Set variable statement"
 	ChangeStmt				"Change statement"
 	SetRoleStmt				"Set active role statement"
@@ -854,6 +855,7 @@ import (
 	ShowProfileTypesOpt		"Show profile types option"
 	ShowProfileType			"Show profile type"
 	ShowProfileTypes		"Show profile types"
+	SplitOption			"Split Option"
 	Starting			"Starting by"
 	StatementList			"statement list"
 	StatsPersistentVal		"stats_persistent value"
@@ -1063,6 +1065,7 @@ import (
 %right 	not not2
 %right	collate
 
+%left splitOptionPriv
 %precedence '('
 %precedence quick
 %precedence escape
@@ -1489,13 +1492,35 @@ RecoverTableStmt:
  *      SPLIT TABLE table_name INDEX index_name BY (val1...),(val2...)...
  *
  *******************************************************************/
-SplitIndexRegionStmt:
-	"SPLIT" "TABLE" TableName "INDEX" IndexName "BY" ValuesList
+ SplitRegionStmt:
+ 	"SPLIT" "TABLE" TableName SplitOption
 	{
-		$$ = &ast.SplitIndexRegionStmt{
+		$$ = &ast.SplitRegionStmt{
 			Table: $3.(*ast.TableName),
-			IndexName: $5.(string),
-			ValueLists: $7.([][]ast.ExprNode),
+			SplitOpt: $4.(*ast.SplitOption),
+		}
+	}
+|	"SPLIT" "TABLE" TableName "INDEX" Identifier SplitOption
+	{
+		$$ = &ast.SplitRegionStmt{
+			Table: $3.(*ast.TableName),
+			IndexName: model.NewCIStr($5),
+			SplitOpt: $6.(*ast.SplitOption),
+		}
+	}
+SplitOption:
+	"BETWEEN" RowValue "AND" RowValue "REGIONS" NUM
+	{
+		$$ = &ast.SplitOption{
+			Lower: $2.([]ast.ExprNode),
+			Upper: $4.([]ast.ExprNode),
+			Num: $6.(int64),
+		}
+	}
+|	"BY" ValuesList
+	{
+		$$ = &ast.SplitOption{
+			ValueLists: $2.([][]ast.ExprNode),
 		}
 	}
 
@@ -3330,7 +3355,7 @@ UnReservedKeyword:
 
 TiDBKeyword:
 "ADMIN" | "BUCKETS" | "CANCEL" | "DDL" | "DRAINER" | "JOBS" | "JOB" | "NODE_ID" | "NODE_STATE" | "PUMP" | "STATS" | "STATS_META" | "STATS_HISTOGRAMS" | "STATS_BUCKETS" | "STATS_HEALTHY" | "TIDB" | "TIDB_HJ"
-| "TIDB_SMJ" | "TIDB_INLJ" | "SPLIT" | "OPTIMISTIC" | "PESSIMISTIC"
+| "TIDB_SMJ" | "TIDB_INLJ" | "SPLIT" | "OPTIMISTIC" | "PESSIMISTIC" | "REGIONS"
 
 NotKeywordToken:
  "ADDDATE" | "BIT_AND" | "BIT_OR" | "BIT_XOR" | "CAST" | "COPY" | "COUNT" | "CURTIME" | "DATE_ADD" | "DATE_SUB" | "EXTRACT" | "GET_FORMAT" | "GROUP_CONCAT"
@@ -6970,7 +6995,7 @@ Statement:
 |	SetStmt
 |	SetRoleStmt
 |	SetDefaultRoleStmt
-|	SplitIndexRegionStmt
+|	SplitRegionStmt
 |	ShowStmt
 |	SubSelect
 	{
