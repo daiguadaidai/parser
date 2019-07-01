@@ -5016,6 +5016,9 @@ SelectStmtBasic:
 			Distinct:      $2.(*ast.SelectStmtOpts).Distinct,
 			Fields:        $3.(*ast.FieldList),
 		}
+		if st.SelectStmtOpts.TableHints != nil {
+			st.TableHints = st.SelectStmtOpts.TableHints
+		}
 		$$ = st
 	}
 

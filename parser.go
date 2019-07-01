@@ -11178,6 +11178,9 @@ yynewstate:
 				Distinct:       yyS[yypt-1].item.(*ast.SelectStmtOpts).Distinct,
 				Fields:         yyS[yypt-0].item.(*ast.FieldList),
 			}
+			if st.SelectStmtOpts.TableHints != nil {
+				st.TableHints = st.SelectStmtOpts.TableHints
+			}
 			parser.yyVAL.item = st
 		}
 	case 959:
