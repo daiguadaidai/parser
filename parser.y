@@ -1550,7 +1550,6 @@ SplitRegionStmt:
 		}
 	}
 
-
 SplitOption:
 	"BETWEEN" RowValue "AND" RowValue "REGIONS" NUM
 	{
@@ -5042,9 +5041,6 @@ SelectStmtFromTable:
 	{
 		st := $1.(*ast.SelectStmt)
 		st.From = $3.(*ast.TableRefsClause)
-		if st.SelectStmtOpts.TableHints != nil {
-			st.TableHints = st.SelectStmtOpts.TableHints
-		}
 		lastField := st.Fields.Fields[len(st.Fields.Fields)-1]
 		if lastField.Expr != nil && lastField.AsName.O == "" {
 			lastEnd := parser.endOffset(&yyS[yypt-5])
@@ -6518,12 +6514,12 @@ AdminStmt:
  			Tp: ast.AdminReloadExprPushdownBlacklist,
  		}
  	}
- |	"ADMIN" "CLEANUP" "TABLE" "LOCK" TableNameList
- 	{
- 		$$ = &ast.CleanupTableLockStmt{
- 			Tables: $5.([]*ast.TableName),
- 		}
- 	}
+|	"ADMIN" "CLEANUP" "TABLE" "LOCK" TableNameList
+	{
+		$$ = &ast.CleanupTableLockStmt{
+			Tables: $5.([]*ast.TableName),
+		}
+	}
 
 AdminShowSlow:
 	"RECENT" NUM
@@ -6630,6 +6626,21 @@ ShowStmt:
                         User:	$4.(*auth.UserIdentity),
                 }
         }
+|	"SHOW" "TABLE" TableName "REGIONS"
+	{
+		$$ = &ast.ShowStmt{
+			Tp:	ast.ShowRegions,
+			Table:	$3.(*ast.TableName),
+		}
+	}
+|	"SHOW" "TABLE" TableName "INDEX" Identifier "REGIONS"
+	{
+		$$ = &ast.ShowStmt{
+			Tp:	ast.ShowRegions,
+			Table:	$3.(*ast.TableName),
+			IndexName: model.NewCIStr($5),
+		}
+	}
 |	"SHOW" "GRANTS"
 	{
 		// See https://dev.mysql.com/doc/refman/5.7/en/show-grants.html
