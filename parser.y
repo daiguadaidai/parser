@@ -796,6 +796,7 @@ import (
 	OnDuplicateKeyUpdate		"ON DUPLICATE KEY UPDATE value list"
 	DuplicateOpt			"[IGNORE|REPLACE] in CREATE TABLE ... SELECT statement or LOAD DATA statement"
 	OptFull				"Full or empty"
+	OptTemporary			"TEMPORARY or empty"
 	Order				"ORDER BY clause optional collation specification"
 	OrderBy				"ORDER BY clause"
 	OrReplace			"or replace"
@@ -2752,7 +2753,7 @@ DeleteFromStmt:
 		// Single Table
 		tn := $7.(*ast.TableName)
 		tn.IndexHints = $9.([]*ast.IndexHint)
-                join := &ast.Join{Left: &ast.TableSource{Source: tn, AsName: $8.(model.CIStr)}, Right: nil}
+		join := &ast.Join{Left: &ast.TableSource{Source: tn, AsName: $8.(model.CIStr)}, Right: nil}
 		x := &ast.DeleteStmt{
 			TableRefs: &ast.TableRefsClause{TableRefs: join},
 			Priority:  $3.(mysql.PriorityEnum),
@@ -2763,11 +2764,11 @@ DeleteFromStmt:
 			x.Where = $10.(ast.ExprNode)
 		}
 		if $11 != nil {
-        		x.Order = $11.(*ast.OrderByClause)
-        	}
-        	if $12 != nil {
-        		x.Limit = $12.(*ast.Limit)
-        	}
+			x.Order = $11.(*ast.OrderByClause)
+		}
+		if $12 != nil {
+			x.Limit = $12.(*ast.Limit)
+		}
 
 		$$ = x
 	}
@@ -2828,14 +2829,15 @@ DropIndexStmt:
 	}
 
 DropTableStmt:
-	"DROP" TableOrTables TableNameList RestrictOrCascadeOpt
+	"DROP" OptTemporary TableOrTables IfExists TableNameList RestrictOrCascadeOpt
 	{
-		$$ = &ast.DropTableStmt{Tables: $3.([]*ast.TableName), IsView: false}
+		$$ = &ast.DropTableStmt{IfExists: $4.(bool), Tables: $5.([]*ast.TableName), IsView: false, IsTemporary: $2.(bool)}
 	}
-|	"DROP" TableOrTables "IF" "EXISTS" TableNameList RestrictOrCascadeOpt
-	{
-		$$ = &ast.DropTableStmt{IfExists: true, Tables: $5.([]*ast.TableName), IsView: false}
-	}
+
+OptTemporary:
+	  /* empty */ { $$= false; }
+	| "TEMPORARY" { $$= true;  }
+	;
 
 DropViewStmt:
 	"DROP" "VIEW" TableNameList RestrictOrCascadeOpt
@@ -6516,26 +6518,26 @@ AdminStmt:
  			Tp: ast.AdminReloadExprPushdownBlacklist,
  		}
  	}
- |	"ADMIN" "RELOAD" "OPT_RULE_BLACKLIST"
-  	{
-  		$$ = &ast.AdminStmt{
-  			Tp: ast.AdminReloadOptRuleBlacklist,
-  		}
-  	}
- |	"ADMIN" "PLUGINS" "ENABLE" PluginNameList
-  	{
-  		$$ = &ast.AdminStmt{
-  			Tp: ast.AdminPluginEnable,
-  			Plugins: $4.([]string),
-  		}
-  	}
- |	"ADMIN" "PLUGINS" "DISABLE" PluginNameList
-  	{
-  		$$ = &ast.AdminStmt{
-  			Tp: ast.AdminPluginDisable,
-  			Plugins: $4.([]string),
-  		}
-  	}
+|	"ADMIN" "RELOAD" "OPT_RULE_BLACKLIST"
+ 	{
+ 		$$ = &ast.AdminStmt{
+ 			Tp: ast.AdminReloadOptRuleBlacklist,
+ 		}
+ 	}
+|	"ADMIN" "PLUGINS" "ENABLE" PluginNameList
+ 	{
+ 		$$ = &ast.AdminStmt{
+ 			Tp: ast.AdminPluginEnable,
+ 			Plugins: $4.([]string),
+ 		}
+ 	}
+|	"ADMIN" "PLUGINS" "DISABLE" PluginNameList
+ 	{
+ 		$$ = &ast.AdminStmt{
+ 			Tp: ast.AdminPluginDisable,
+ 			Plugins: $4.([]string),
+ 		}
+ 	}
 |	"ADMIN" "CLEANUP" "TABLE" "LOCK" TableNameList
 	{
 		$$ = &ast.CleanupTableLockStmt{
