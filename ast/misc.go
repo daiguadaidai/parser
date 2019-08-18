@@ -1055,7 +1055,7 @@ func (p *PasswordOrLockOption) Restore(ctx *RestoreCtx) error {
 	case PasswordExpireNever:
 		ctx.WriteKeyWord("PASSWORD EXPIRE NEVER")
 	case PasswordExpireInterval:
-		ctx.WriteKeyWord("PASSWORD EXPIRE NEVER")
+		ctx.WriteKeyWord("PASSWORD EXPIRE INTERVAL")
 		ctx.WritePlainf(" %d", p.Count)
 		ctx.WriteKeyWord(" DAY")
 	case Lock:
@@ -1162,9 +1162,12 @@ func (n *CreateUserStmt) SecureText() string {
 type AlterUserStmt struct {
 	stmtNode
 
-	IfExists    bool
-	CurrentAuth *AuthOption
-	Specs       []*UserSpec
+	IfExists              bool
+	CurrentAuth           *AuthOption
+	Specs                 []*UserSpec
+	TslOptions            []*TslOption
+	ResourceOptions       []*ResourceOption
+	PasswordOrLockOptions []*PasswordOrLockOption
 }
 
 // Restore implements Node interface.
@@ -1186,6 +1189,40 @@ func (n *AlterUserStmt) Restore(ctx *RestoreCtx) error {
 		}
 		if err := v.Restore(ctx); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore AlterUserStmt.Specs[%d]", i)
+		}
+	}
+
+	tslOptionLen := len(n.TslOptions)
+
+	if tslOptionLen != 0 {
+		ctx.WriteKeyWord(" REQUIRE ")
+	}
+
+	// Restore `tslOptions` reversely to keep order the same with original sql
+	for i := tslOptionLen; i > 0; i-- {
+		if i != tslOptionLen {
+			ctx.WriteKeyWord(" AND ")
+		}
+		if err := n.TslOptions[i-1].Restore(ctx); err != nil {
+			return errors.Annotatef(err, "An error occurred while restore AlterUserStmt.TslOptions[%d]", i)
+		}
+	}
+
+	if len(n.ResourceOptions) != 0 {
+		ctx.WriteKeyWord(" WITH")
+	}
+
+	for i, v := range n.ResourceOptions {
+		ctx.WritePlain(" ")
+		if err := v.Restore(ctx); err != nil {
+			return errors.Annotatef(err, "An error occurred while restore AlterUserStmt.ResourceOptions[%d]", i)
+		}
+	}
+
+	for i, v := range n.PasswordOrLockOptions {
+		ctx.WritePlain(" ")
+		if err := v.Restore(ctx); err != nil {
+			return errors.Annotatef(err, "An error occurred while restore AlterUserStmt.PasswordOrLockOptions[%d]", i)
 		}
 	}
 	return nil
@@ -1612,51 +1649,17 @@ type PrivElem struct {
 
 // Restore implements Node interface.
 func (n *PrivElem) Restore(ctx *RestoreCtx) error {
-	switch n.Priv {
-	case 0:
+	if n.Priv == 0 {
 		ctx.WritePlain("/* UNSUPPORTED TYPE */")
-	case mysql.AllPriv:
+	} else if n.Priv == mysql.AllPriv {
 		ctx.WriteKeyWord("ALL")
-	case mysql.AlterPriv:
-		ctx.WriteKeyWord("ALTER")
-	case mysql.CreatePriv:
-		ctx.WriteKeyWord("CREATE")
-	case mysql.CreateUserPriv:
-		ctx.WriteKeyWord("CREATE USER")
-	case mysql.CreateRolePriv:
-		ctx.WriteKeyWord("CREATE ROLE")
-	case mysql.TriggerPriv:
-		ctx.WriteKeyWord("TRIGGER")
-	case mysql.DeletePriv:
-		ctx.WriteKeyWord("DELETE")
-	case mysql.DropPriv:
-		ctx.WriteKeyWord("DROP")
-	case mysql.ProcessPriv:
-		ctx.WriteKeyWord("PROCESS")
-	case mysql.ExecutePriv:
-		ctx.WriteKeyWord("EXECUTE")
-	case mysql.IndexPriv:
-		ctx.WriteKeyWord("INDEX")
-	case mysql.InsertPriv:
-		ctx.WriteKeyWord("INSERT")
-	case mysql.SelectPriv:
-		ctx.WriteKeyWord("SELECT")
-	case mysql.SuperPriv:
-		ctx.WriteKeyWord("SUPER")
-	case mysql.ShowDBPriv:
-		ctx.WriteKeyWord("SHOW DATABASES")
-	case mysql.UpdatePriv:
-		ctx.WriteKeyWord("UPDATE")
-	case mysql.GrantPriv:
-		ctx.WriteKeyWord("GRANT OPTION")
-	case mysql.ReferencesPriv:
-		ctx.WriteKeyWord("REFERENCES")
-	case mysql.CreateViewPriv:
-		ctx.WriteKeyWord("CREATE VIEW")
-	case mysql.ShowViewPriv:
-		ctx.WriteKeyWord("SHOW VIEW")
-	default:
-		return errors.New("Undefined privilege type")
+	} else {
+		str, ok := mysql.Priv2Str[n.Priv]
+		if ok {
+			ctx.WriteKeyWord(str)
+		} else {
+			return errors.New("Undefined privilege type")
+		}
 	}
 	if n.Cols != nil {
 		ctx.WritePlain(" (")
@@ -2023,24 +2026,53 @@ type TableOptimizerHint struct {
 	// It allows only table name or alias (if table has an alias)
 	HintName model.CIStr
 	Tables   []model.CIStr
+	Indexes  []model.CIStr
 	// Statement Execution Time Optimizer Hints
 	// See https://dev.mysql.com/doc/refman/5.7/en/optimizer-hints.html#optimizer-hints-execution-time
 	MaxExecutionTime uint64
+	MemoryQuota      uint64
+	QueryType        model.CIStr
+	HintFlag         bool
 }
 
 // Restore implements Node interface.
 func (n *TableOptimizerHint) Restore(ctx *RestoreCtx) error {
 	ctx.WriteKeyWord(n.HintName.String())
+	// Hints without args.
+	switch n.HintName.L {
+	case "hash_agg", "stream_agg", "read_consistent_replica", "no_index_merge":
+		return nil
+	}
+	// Hints with args.
 	ctx.WritePlain("(")
-	if n.HintName.L == "max_execution_time" {
+	switch n.HintName.L {
+	case "max_execution_time":
 		ctx.WritePlainf("%d", n.MaxExecutionTime)
-	} else {
+	case "tidb_hj", "tidb_smj", "tidb_inlj", "hash_join", "sm_join", "inl_join":
 		for i, table := range n.Tables {
 			if i != 0 {
 				ctx.WritePlain(", ")
 			}
 			ctx.WriteName(table.String())
 		}
+	case "index", "use_index_merge":
+		if len(n.Tables) != 0 {
+			ctx.WriteName(n.Tables[0].String())
+		}
+		for _, index := range n.Indexes {
+			ctx.WritePlain(", ")
+			ctx.WriteName(index.String())
+		}
+	case "use_toja", "enable_plan_cache":
+		if n.HintFlag {
+			ctx.WritePlain("TRUE")
+		} else {
+			ctx.WritePlain("FALSE")
+		}
+	case "query_type":
+		ctx.WriteKeyWord(n.QueryType.String())
+	case "memory_quota":
+		ctx.WritePlainf("%d M", n.MemoryQuota)
 	}
 	ctx.WritePlain(")")
 	return nil
