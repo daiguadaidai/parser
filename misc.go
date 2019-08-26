@@ -89,6 +89,8 @@ func init() {
 	initTokenByte('<', int('<'))
 	initTokenByte('(', int('('))
 	initTokenByte(')', int(')'))
+	initTokenByte('[', int('['))
+	initTokenByte(']', int(']'))
 	initTokenByte(';', int(';'))
 	initTokenByte(',', int(','))
 	initTokenByte('&', int('&'))
@@ -138,6 +140,7 @@ var tokenMap = map[string]int{
 	"ADDDATE":                  addDate,
 	"ADMIN":                    admin,
 	"AFTER":                    after,
+	"AGG_TO_COP":               hintAggToCop,
 	"ALL":                      all,
 	"ALGORITHM":                algorithm,
 	"ALTER":                    alter,
@@ -443,6 +446,7 @@ var tokenMap = map[string]int{
 	"PROFILE":                  profile,
 	"PROFILES":                 profiles,
 	"PUMP":                     pump,
+	"QB_NAME":                  hintQBName,
 	"QUARTER":                  quarter,
 	"QUERY":                    query,
 	"QUERY_TYPE":               hintQueryType,
@@ -455,6 +459,7 @@ var tokenMap = map[string]int{
 	"REBUILD":                  rebuild,
 	"READ":                     read,
 	"READ_CONSISTENT_REPLICA":  hintReadConsistentReplica,
+	"READ_FROM_STORAGE":        hintReadFromStorage,
 	"REAL":                     realType,
 	"RECENT":                   recent,
 	"REDUNDANT":                redundant,
@@ -494,6 +499,7 @@ var tokenMap = map[string]int{
 	"SECOND_MICROSECOND":       secondMicrosecond,
 	"SECURITY":                 security,
 	"SELECT":                   selectKwd,
+	"SERIAL":                   serial,
 	"SERIALIZABLE":             serializable,
 	"SESSION":                  session,
 	"SET":                      set,
@@ -573,6 +579,8 @@ var tokenMap = map[string]int{
 	"TIDB_HJ":                  hintHJ,
 	"TIDB_INLJ":                hintINLJ,
 	"TIDB_SMJ":                 hintSMJ,
+	"TIKV":                     hintTiKV,
+	"TIFLASH":                  hintTiFlash,
 	"TIME":                     timeType,
 	"TIMESTAMP":                timestampType,
 	"TIMESTAMPADD":             timestampAdd,
@@ -623,6 +631,7 @@ var tokenMap = map[string]int{
 	"VALUES":                   values,
 	"VARBINARY":                varbinaryType,
 	"VARCHAR":                  varcharType,
+	"VARCHARACTER":             varcharacter,
 	"VARIABLES":                variables,
 	"VARIANCE":                 varPop,
 	"VARYING":                  varying,
