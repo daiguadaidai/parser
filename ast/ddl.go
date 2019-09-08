@@ -548,6 +548,16 @@ func (n *ColumnOption) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+// IndexVisibility is the option for index visibility.
+type IndexVisibility int
+
+// IndexVisibility options.
+const (
+	IndexVisibilityDefault IndexVisibility = iota
+	IndexVisibilityVisible
+	IndexVisibilityInvisible
+)
+
 // IndexOption is the index options.
 //    KEY_BLOCK_SIZE [=] value
 //  | index_type
@@ -560,6 +570,8 @@ type IndexOption struct {
 	KeyBlockSize uint64
 	Tp           model.IndexType
 	Comment      string
+	ParserName   model.CIStr
+	Visibility   IndexVisibility
 }
 
 // Restore implements Node interface.
@@ -580,12 +592,34 @@ func (n *IndexOption) Restore(ctx *RestoreCtx) error {
 		hasPrevOption = true
 	}
 
+	if len(n.ParserName.O) > 0 {
+		if hasPrevOption {
+			ctx.WritePlain(" ")
+		}
+		ctx.WriteKeyWord("WITH PARSER ")
+		ctx.WriteName(n.ParserName.O)
+		hasPrevOption = true
+	}
+
 	if n.Comment != "" {
 		if hasPrevOption {
 			ctx.WritePlain(" ")
 		}
 		ctx.WriteKeyWord("COMMENT ")
 		ctx.WriteString(n.Comment)
+		hasPrevOption = true
+	}
+
+	if n.Visibility != IndexVisibilityDefault {
+		if hasPrevOption {
+			ctx.WritePlain(" ")
+		}
+		switch n.Visibility {
+		case IndexVisibilityVisible:
+			ctx.WriteKeyWord("VISIBLE")
+		case IndexVisibilityInvisible:
+			ctx.WriteKeyWord("INVISIBLE")
+		}
 	}
 	return nil
 }
@@ -1312,7 +1346,7 @@ func (n *CreateIndexStmt) Restore(ctx *RestoreCtx) error {
 	}
 	ctx.WritePlain(")")
 
-	if n.IndexOption.Tp != model.IndexTypeInvalid || n.IndexOption.KeyBlockSize > 0 || n.IndexOption.Comment != "" {
+	if n.IndexOption.Tp != model.IndexTypeInvalid || n.IndexOption.KeyBlockSize > 0 || n.IndexOption.Comment != "" || len(n.IndexOption.ParserName.O) > 0 || n.IndexOption.Visibility != IndexVisibilityDefault {
 		ctx.WritePlain(" ")
 		if err := n.IndexOption.Restore(ctx); err != nil {
 			return errors.Annotate(err, "An error occurred while restore CreateIndexStmt.IndexOption")
@@ -1557,6 +1591,8 @@ const (
 	TableOptionSecondaryEngineNull
 	TableOptionInsertMethod
 	TableOptionTableCheckSum
+	TableOptionUnion
+	TableOptionEncryption
 )
 
 // RowFormat types
@@ -1591,10 +1627,11 @@ const (
 
 // TableOption is used for parsing table option from SQL.
 type TableOption struct {
-	Tp        TableOptionType
-	Default   bool
-	StrValue  string
-	UintValue uint64
+	Tp         TableOptionType
+	Default    bool
+	StrValue   string
+	UintValue  uint64
+	TableNames []*TableName
 }
 
 func (n *TableOption) Restore(ctx *RestoreCtx) error {
@@ -1762,6 +1799,20 @@ func (n *TableOption) Restore(ctx *RestoreCtx) error {
 		ctx.WriteKeyWord("TABLE_CHECKSUM ")
 		ctx.WritePlain("= ")
 		ctx.WritePlainf("%d", n.UintValue)
+	case TableOptionUnion:
+		ctx.WriteKeyWord("UNION ")
+		ctx.WritePlain("= (")
+		for i, tableName := range n.TableNames {
+			if i != 0 {
+				ctx.WritePlain(",")
+			}
+			tableName.Restore(ctx)
+		}
+		ctx.WritePlain(")")
+	case TableOptionEncryption:
+		ctx.WriteKeyWord("ENCRYPTION ")
+		ctx.WritePlain("= ")
+		ctx.WriteString(n.StrValue)
 	default:
 		return errors.Errorf("invalid TableOption: %d", n.Tp)
 	}
@@ -1867,7 +1918,9 @@ const (
 	AlterTableDropCheck
 	AlterTableImportTablespace
 	AlterTableDiscardTablespace
+	AlterTableIndexInvisible
 	// TODO: Add more actions
+	AlterTableOrderByColumns
 )
 
 // LockType is the type for AlterTableSpec.
@@ -1944,8 +1997,10 @@ type AlterTableSpec struct {
 	Name            string
 	Constraint      *Constraint
 	Options         []*TableOption
+	OrderByList     []*AlterOrderItem
 	NewTable        *TableName
 	NewColumns      []*ColumnDef
+	NewConstraints  []*Constraint
 	OldColumnName   *ColumnName
 	NewColumnName   *ColumnName
 	Position        *ColumnPosition
@@ -1959,6 +2014,25 @@ type AlterTableSpec struct {
 	PartDefinitions []*PartitionDefinition
 	WithValidation  bool
 	Num             uint64
+	Visibility      IndexVisibility
+}
+
+// AlterOrderItem represents an item in order by at alter table stmt.
+type AlterOrderItem struct {
+	node
+	Column *ColumnName
+	Desc   bool
+}
+
+// Restore implements Node interface.
+func (n *AlterOrderItem) Restore(ctx *RestoreCtx) error {
+	if err := n.Column.Restore(ctx); err != nil {
+		return errors.Annotate(err, "An error occurred while restore AlterOrderItem.Column")
+	}
+	if n.Desc {
+		ctx.WriteKeyWord(" DESC")
+	}
+	return nil
 }
 
 // Restore implements Node interface.
@@ -1999,6 +2073,7 @@ func (n *AlterTableSpec) Restore(ctx *RestoreCtx) error {
 				return errors.Annotate(err, "An error occurred while restore AlterTableSpec.Position")
 			}
 		} else {
+			lenCols := len(n.NewColumns)
 			ctx.WritePlain("(")
 			for i, col := range n.NewColumns {
 				if i != 0 {
@@ -2006,6 +2081,14 @@ func (n *AlterTableSpec) Restore(ctx *RestoreCtx) error {
 				}
 				if err := col.Restore(ctx); err != nil {
 					return errors.Annotatef(err, "An error occurred while restore AlterTableSpec.NewColumns[%d]", i)
+				}
+			}
+			for i, constraint := range n.NewConstraints {
+				if i != 0 || lenCols >= 1 {
+					ctx.WritePlain(", ")
+				}
+				if err := constraint.Restore(ctx); err != nil {
+					return errors.Annotatef(err, "An error occurred while restore AlterTableSpec.NewConstraints[%d]", i)
 				}
 			}
 			ctx.WritePlain(")")
@@ -2110,6 +2193,16 @@ func (n *AlterTableSpec) Restore(ctx *RestoreCtx) error {
 		ctx.WriteKeyWord("LOCK ")
 		ctx.WritePlain("= ")
 		ctx.WriteKeyWord(n.LockType.String())
+	case AlterTableOrderByColumns:
+		ctx.WriteKeyWord("ORDER BY ")
+		for i, alterOrderItem := range n.OrderByList {
+			if i != 0 {
+				ctx.WritePlain(",")
+			}
+			if err := alterOrderItem.Restore(ctx); err != nil {
+				return errors.Annotatef(err, "An error occurred while restore AlterTableSpec.OrderByList[%d]", i)
+			}
+		}
 	case AlterTableAlgorithm:
 		ctx.WriteKeyWord("ALGORITHM ")
 		ctx.WritePlain("= ")
@@ -2327,6 +2420,15 @@ func (n *AlterTableSpec) Restore(ctx *RestoreCtx) error {
 		ctx.WriteKeyWord("IMPORT TABLESPACE")
 	case AlterTableDiscardTablespace:
 		ctx.WriteKeyWord("DISCARD TABLESPACE")
+	case AlterTableIndexInvisible:
+		ctx.WriteKeyWord("ALTER INDEX ")
+		ctx.WriteName(n.Name)
+		switch n.Visibility {
+		case IndexVisibilityVisible:
+			ctx.WriteKeyWord(" VISIBLE")
+		case IndexVisibilityInvisible:
+			ctx.WriteKeyWord(" INVISIBLE")
+		}
 	default:
 		// TODO: not support
 		ctx.WritePlainf(" /* AlterTableType(%d) is not supported */ ", n.Tp)
@@ -2361,6 +2463,13 @@ func (n *AlterTableSpec) Accept(v Visitor) (Node, bool) {
 			return n, false
 		}
 		col = node.(*ColumnDef)
+	}
+	for _, constraint := range n.NewConstraints {
+		node, ok := constraint.Accept(v)
+		if !ok {
+			return n, false
+		}
+		constraint = node.(*Constraint)
 	}
 	if n.OldColumnName != nil {
 		node, ok := n.OldColumnName.Accept(v)

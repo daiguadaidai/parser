@@ -150,7 +150,7 @@ func (n *TraceStmt) Accept(v Visitor) (Node, bool) {
 	if !ok {
 		return n, false
 	}
-	n.Stmt = node.(DMLNode)
+	n.Stmt = node.(StmtNode)
 	return v.Leave(n)
 }
 
@@ -321,6 +321,7 @@ type Prepared struct {
 	Params        []ParamMarkerExpr
 	SchemaVersion int64
 	UseCache      bool
+	CachedPlan    interface{}
 }
 
 // ExecuteStmt is a statement to execute PreparedStmt.

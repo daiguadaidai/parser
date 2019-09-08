@@ -200,6 +200,7 @@ import (
 	over			"OVER"
 	packKeys		"PACK_KEYS"
 	partition		"PARTITION"
+	parser			"PARSER"
 	percentRank		"PERCENT_RANK"
 	precisionType		"PRECISION"
 	primary			"PRIMARY"
@@ -362,6 +363,7 @@ import (
 	issuer		"ISSUER"
 	incremental	"INCREMENTAL"
 	indexes		"INDEXES"
+	invisible	"INVISIBLE"
 	invoker		"INVOKER"
 	io		"IO"
 	ipc		"IPC"
@@ -489,6 +491,7 @@ import (
 	transaction	"TRANSACTION"
 	triggers	"TRIGGERS"
 	truncate	"TRUNCATE"
+	tp             	"TYPE"
 	unbounded	"UNBOUNDED"
 	uncommitted	"UNCOMMITTED"
 	unknown 	"UNKNOWN"
@@ -498,6 +501,7 @@ import (
 	value		"VALUE"
 	variables	"VARIABLES"
 	view		"VIEW"
+	visible		"VISIBLE"
 	binding		"BINDING"
 	bindings	"BINDINGS"
 	warnings	"WARNINGS"
@@ -532,7 +536,7 @@ import (
 	now			"NOW"
 	position		"POSITION"
 	recent			"RECENT"
-	std	            "STD"
+	std			"STD"
 	stddev			"STDDEV"
 	stddevPop		"STDDEV_POP"
 	stddevSamp		"STDDEV_SAMP"
@@ -725,13 +729,13 @@ import (
 	ReplaceIntoStmt			"REPLACE INTO statement"
 	RecoverTableStmt                "recover table statement"
 	RevokeStmt			"Revoke statement"
-	RevokeRoleStmt      "Revoke role statement"
+	RevokeRoleStmt			"Revoke role statement"
 	RollbackStmt			"ROLLBACK statement"
-	SplitRegionStmt		"Split index region statement"
+	SplitRegionStmt			"Split index region statement"
 	SetStmt				"Set variable statement"
-	ChangeStmt				"Change statement"
-	SetRoleStmt				"Set active role statement"
-	SetDefaultRoleStmt			"Set default statement for some user"
+	ChangeStmt			"Change statement"
+	SetRoleStmt			"Set active role statement"
+	SetDefaultRoleStmt		"Set default statement for some user"
 	ShowStmt			"Show engines/databases/tables/user/columns/warnings/status statement"
 	Statement			"statement"
 	TraceStmt			"TRACE statement"
@@ -820,7 +824,7 @@ import (
 	FieldItem			"Field item for load data clause"
 	FieldItemList			"Field items for load data clause"
 	FuncDatetimePrec		"Function datetime precision"
-	GetFormatSelector	"{DATE|DATETIME|TIME|TIMESTAMP}"
+	GetFormatSelector		"{DATE|DATETIME|TIME|TIMESTAMP}"
 	GlobalScope			"The scope of variable"
 	GroupByClause			"GROUP BY clause"
 	HashString			"Hashed string"
@@ -838,14 +842,17 @@ import (
 	IndexHintListOpt		"index hint list opt"
 	IndexHintScope			"index hint scope"
 	IndexHintType			"index hint type"
+	IndexInvisible			"index visible/invisible"
 	IndexKeyTypeOpt			"index key type"
 	IndexLockAndAlgorithmOpt	"index lock and algorithm"
 	IndexName			"index name"
+	IndexNameAndTypeOpt		"index name and index type"
 	IndexNameList			"index name list"
 	IndexOption			"Index Option"
 	IndexOptionList			"Index Option List or empty"
 	IndexType			"index type"
-	IndexTypeOpt			"Optional index type"
+	IndexTypeName			"index type name"
+	IndexTypeOpt			"optional index type"
 	InsertValues			"Rest part of INSERT/REPLACE INTO statement"
 	JoinTable 			"join table"
 	JoinType			"join type"
@@ -874,6 +881,8 @@ import (
 	ByItem				"BY item"
 	OrderByOptional			"Optional ORDER BY clause optional"
 	ByList				"BY list"
+	AlterOrderItem		"Alter Order item"
+	AlterOrderList		"Alter Order list"
 	QuickOptional			"QUICK or empty"
 	QueryBlockOpt			"Query block identifier optional"
 	PartitionDefinition		"Partition definition"
@@ -1098,6 +1107,7 @@ import (
 	NChar			"{NCHAR|NATIONAL CHARACTER|NATIONAL CHAR}"
 	Varchar			"{VARCHAR|VARCHARACTER|CHARACTER VARYING|CHAR VARYING}"
 	NVarchar		"{NATIONAL VARCHAR|NATIONAL VARCHARACTER|NVARCHAR|NCHAR VARCHAR|NATIONAL CHARACTER VARYING|NATIONAL CHAR VARYING|NCHAR VARYING}"
+	Year			"{YEAR|SQL_TSI_YEAR}"
 	DeallocateSym		"Deallocate or drop"
 	OuterOpt		"optional OUTER clause"
 	CrossOpt		"Cross join option"
@@ -1152,6 +1162,8 @@ import (
 %precedence local
 %precedence lowerThanRemove
 %precedence remove
+%precedence lowerThenOrder
+%precedence order
 
 %left   join straightJoin inner cross left right full natural
 /* A dummy token to force the priority of TableRef production in a join. */
@@ -1272,12 +1284,24 @@ AlterTableSpec:
 			Position:	$5.(*ast.ColumnPosition),
 		}
 	}
-|	"ADD" ColumnKeywordOpt IfNotExists '(' ColumnDefList ')'
+|	"ADD" ColumnKeywordOpt IfNotExists '(' TableElementList ')'
 	{
+		tes := $5.([]interface {})
+		var columnDefs []*ast.ColumnDef
+		var constraints []*ast.Constraint
+		for _, te := range tes {
+			switch te := te.(type) {
+			case *ast.ColumnDef:
+				columnDefs = append(columnDefs, te)
+			case *ast.Constraint:
+				constraints = append(constraints, te)
+			}
+		}
 		$$ = &ast.AlterTableSpec{
 			IfNotExists: 	$3.(bool),
 			Tp: 		ast.AlterTableAddColumns,
-			NewColumns:	$5.([]*ast.ColumnDef),
+			NewColumns:	columnDefs,
+			NewConstraints: constraints,
 		}
 	}
 |	"ADD" Constraint
@@ -1506,6 +1530,13 @@ AlterTableSpec:
 			Name: $5.(string),
 		}
 	}
+|	"ORDER" "BY" AlterOrderList %prec lowerThenOrder
+	{
+		$$ = &ast.AlterTableSpec{
+			Tp: ast.AlterTableOrderByColumns,
+			OrderByList: $3.([]*ast.AlterOrderItem),
+		}
+	}
 |	"DISABLE" "KEYS"
 	{
 		$$ = &ast.AlterTableSpec{
@@ -1694,6 +1725,14 @@ AlterTableSpec:
 		}
 		yylex.AppendError(yylex.Errorf("The DROP CHECK clause is parsed but not implemented yet."))
 		parser.lastErrorAsWarn()
+	}
+|	"ALTER" "INDEX" Identifier IndexInvisible
+	{
+		$$ = &ast.AlterTableSpec{
+			Tp:               ast.AlterTableIndexInvisible,
+			Name:             $3,
+			Visibility:       $4.(ast.IndexVisibility),
+		}
 	}
 
 ReorganizePartitionRuleOpt:
@@ -2053,7 +2092,7 @@ AnalyzeOption:
 
 /*******************************************************************************************/
 Assignment:
-	ColumnName eq Expression
+	ColumnName eq ExprOrDefault
 	{
 		$$ = &ast.Assignment{Column: $1.(*ast.ColumnName), Expr:$3}
 	}
@@ -2125,7 +2164,7 @@ ColumnDef:
 			yylex.AppendError(yylex.Errorf("Invalid column definition"))
 			return 1
 		}
-        $$ = colDef
+		$$ = colDef
 	}
 |	ColumnName "SERIAL" ColumnOptionListOpt
 	{
@@ -2306,7 +2345,7 @@ ColumnOption:
 	{
 		$$ =  &ast.ColumnOption{Tp: ast.ColumnOptionComment, Expr: ast.NewValueExpr($2)}
 	}
-|	"CHECK" '(' Expression ')' EnforcedOrNotOrNotNullOpt
+|	ConstraintKeywordOpt "CHECK" '(' Expression ')' EnforcedOrNotOrNotNullOpt
 	{
 		// See https://dev.mysql.com/doc/refman/5.7/en/create-table.html
 		// The CHECK clause is parsed but ignored by all storage engines.
@@ -2314,10 +2353,10 @@ ColumnOption:
 
 		optionCheck := &ast.ColumnOption{
 			Tp: ast.ColumnOptionCheck,
-			Expr: $3,
+			Expr: $4,
 			Enforced: true,
 		}
-		switch $5.(int) {
+		switch $6.(int) {
 		case 0:
 			$$ = []*ast.ColumnOption{optionCheck, {Tp: ast.ColumnOptionNotNull}}
 		case 1:
@@ -2360,7 +2399,7 @@ ColumnOption:
 		$$ = &ast.ColumnOption{Tp: ast.ColumnOptionColumnFormat, StrValue: $2.(string)}
 	}
 
-ColumnFormat: 
+ColumnFormat:
 	"DEFAULT"
 	{
 		$$ = "DEFAULT"
@@ -2417,20 +2456,20 @@ ColumnOptionListOpt:
 	}
 
 ConstraintElem:
-	"PRIMARY" "KEY" IndexName IndexTypeOpt '(' IndexColNameList ')' IndexOptionList
+	"PRIMARY" "KEY" IndexNameAndTypeOpt '(' IndexColNameList ')' IndexOptionList
 	{
 		c := &ast.Constraint{
 			Tp: ast.ConstraintPrimaryKey,
-			Keys: $6.([]*ast.IndexColName),
+			Keys: $5.([]*ast.IndexColName),
 		}
-		if $8 != nil {
-			c.Option = $8.(*ast.IndexOption)
+		if $7 != nil {
+			c.Option = $7.(*ast.IndexOption)
 		}
-		if $4 != nil {
+		if indexType := $3.([]interface{})[1]; indexType != nil {
 			if c.Option == nil {
 				c.Option = &ast.IndexOption{}
 			}
-			c.Option.Tp = $4.(model.IndexType)
+			c.Option.Tp = indexType.(model.IndexType)
 		}
 		$$ = c
 	}
@@ -2446,40 +2485,40 @@ ConstraintElem:
 		}
 		$$ = c
 	}
-|	KeyOrIndex IfNotExists IndexName IndexTypeOpt '(' IndexColNameList ')' IndexOptionList
+|	KeyOrIndex IfNotExists IndexNameAndTypeOpt '(' IndexColNameList ')' IndexOptionList
 	{
 		c := &ast.Constraint{
 			IfNotExists:	$2.(bool),
 			Tp:		ast.ConstraintIndex,
-			Keys:		$6.([]*ast.IndexColName),
-			Name:		$3.(string),
+			Keys:		$5.([]*ast.IndexColName),
 		}
-		if $8 != nil {
-			c.Option = $8.(*ast.IndexOption)
+		if $7 != nil {
+			c.Option = $7.(*ast.IndexOption)
 		}
-		if $4 != nil {
+		c.Name = $3.([]interface{})[0].(string)
+		if indexType := $3.([]interface{})[1]; indexType != nil {
 			if c.Option == nil {
 				c.Option = &ast.IndexOption{}
 			}
-			c.Option.Tp = $4.(model.IndexType)
+			c.Option.Tp = indexType.(model.IndexType)
 		}
 		$$ = c
 	}
-|	"UNIQUE" KeyOrIndexOpt IndexName IndexTypeOpt '(' IndexColNameList ')' IndexOptionList
+|	"UNIQUE" KeyOrIndexOpt IndexNameAndTypeOpt '(' IndexColNameList ')' IndexOptionList
 	{
 		c := &ast.Constraint{
 			Tp:	ast.ConstraintUniq,
-			Keys:	$6.([]*ast.IndexColName),
-			Name:	$3.(string),
+			Keys:	$5.([]*ast.IndexColName),
 		}
-		if $8 != nil {
-			c.Option = $8.(*ast.IndexOption)
+		if $7 != nil {
+			c.Option = $7.(*ast.IndexOption)
 		}
-		if $4 != nil {
+		c.Name = $3.([]interface{})[0].(string)
+		if indexType := $3.([]interface{})[1]; indexType != nil {
 			if c.Option == nil {
 				c.Option = &ast.IndexOption{}
 			}
-			c.Option.Tp = $4.(model.IndexType)
+			c.Option.Tp = indexType.(model.IndexType)
 		}
 		$$ = c
 	}
@@ -2669,6 +2708,8 @@ NumLiteral:
 /**************************************CreateIndexStmt***************************************
  * See https://dev.mysql.com/doc/refman/8.0/en/create-index.html
  *
+ * TYPE type_name is recognized as a synonym for USING type_name. However, USING is the preferred form.
+ *
  * CREATE [UNIQUE | FULLTEXT | SPATIAL] INDEX index_name
  *     [index_type]
  *     ON tbl_name (key_part,...)
@@ -2680,7 +2721,9 @@ NumLiteral:
  * index_option:
  *     KEY_BLOCK_SIZE [=] value
  *   | index_type
+ *   | WITH PARSER parser_name
  *   | COMMENT 'string'
+ *   | {VISIBLE | INVISIBLE}
  *
  * index_type:
  *     USING {BTREE | HASH}
@@ -3156,6 +3199,10 @@ PartDefOption:
 	{
 		$$ = &ast.TableOption{Tp: ast.TableOptionEngine, StrValue: $3.(string)}
 	}
+|	"STORAGE" "ENGINE" EqOpt StringName
+	{
+		$$ = &ast.TableOption{Tp: ast.TableOptionEngine, StrValue: $4.(string)}
+	}
 |	"INSERT_METHOD" EqOpt StringName
 	{
 		$$ = &ast.TableOption{Tp: ast.TableOptionInsertMethod, StrValue: $3.(string)}
@@ -3205,7 +3252,7 @@ PartDefValuesOpt:
 	{
 		$$ = &ast.PartitionDefinitionClauseIn{}
 	}
-|	"VALUES" "IN" '(' ExpressionList ')'
+|	"VALUES" "IN" '(' MaxValueOrExpressionList ')'
 	{
 		exprs := $4.([]ast.ExprNode)
 		values := make([][]ast.ExprNode, 0, len(exprs))
@@ -4160,12 +4207,15 @@ IndexOptionList:
 			} else if opt2.Tp != 0 {
 				opt1.Tp = opt2.Tp
 			} else if opt2.KeyBlockSize > 0 {
-			    opt1.KeyBlockSize = opt2.KeyBlockSize
+			   	opt1.KeyBlockSize = opt2.KeyBlockSize
+			} else if len(opt2.ParserName.O) > 0 {
+			   	opt1.ParserName = opt2.ParserName
+			} else if opt2.Visibility != ast.IndexVisibilityDefault {
+				opt1.Visibility = opt2.Visibility
 			}
 			$$ = opt1
 		}
 	}
-
 
 IndexOption:
 	"KEY_BLOCK_SIZE" EqOpt LengthNum
@@ -4180,25 +4230,58 @@ IndexOption:
 			Tp: $1.(model.IndexType),
 		}
 	}
+|	"WITH" "PARSER" Identifier
+	{
+		$$ = &ast.IndexOption {
+			ParserName: model.NewCIStr($3),
+		}
+		yylex.AppendError(yylex.Errorf("The WITH PARASER clause is parsed but ignored by all storage engines."))
+		parser.lastErrorAsWarn()
+	}
 |	"COMMENT" stringLit
 	{
 		$$ = &ast.IndexOption {
 			Comment: $2,
 		}
 	}
+|	IndexInvisible
+	{
+		$$ = &ast.IndexOption {
+			Visibility: $1.(ast.IndexVisibility),
+		}
+	}
 
-IndexType:
-	"USING" "BTREE"
+/*
+  See: https://github.com/mysql/mysql-server/blob/8.0/sql/sql_yacc.yy#L7179
+
+  The syntax for defining an index is:
+
+    ... INDEX [index_name] [USING|TYPE] <index_type> ...
+
+  The problem is that whereas USING is a reserved word, TYPE is not. We can
+  still handle it if an index name is supplied, i.e.:
+
+    ... INDEX type TYPE <index_type> ...
+
+  here the index's name is unmbiguously 'type', but for this:
+
+    ... INDEX TYPE <index_type> ...
+
+  it's impossible to know what this actually mean - is 'type' the name or the
+  type? For this reason we accept the TYPE syntax only if a name is supplied.
+*/
+IndexNameAndTypeOpt:
+	IndexName
 	{
-		$$ = model.IndexTypeBtree
+		$$ = []interface{}{$1, nil}
 	}
-|	"USING" "HASH"
+| 	IndexName "USING" IndexTypeName
 	{
-		$$ = model.IndexTypeHash
+		$$ = []interface{}{$1, $3}
 	}
-|	"USING" "RTREE"
+|	Identifier "TYPE" IndexTypeName
 	{
-		$$ = model.IndexTypeRtree
+		$$ = []interface{}{$1, $3}
 	}
 
 IndexTypeOpt:
@@ -4208,6 +4291,40 @@ IndexTypeOpt:
 |	IndexType
 	{
 		$$ = $1
+	}
+
+IndexType:
+	"USING" IndexTypeName
+	{
+		$$ = $2
+	}
+| 	"TYPE" IndexTypeName
+	{
+		$$ = $2
+	}
+
+IndexTypeName:
+	"BTREE"
+ 	{
+ 		$$ = model.IndexTypeBtree
+ 	}
+ |	"HASH"
+ 	{
+ 		$$ = model.IndexTypeHash
+ 	}
+ |	"RTREE"
+ 	{
+ 		$$ = model.IndexTypeRtree
+ 	}
+
+IndexInvisible:
+	"VISIBLE"
+	{
+		$$ = ast.IndexVisibilityVisible
+	}
+|	"INVISIBLE"
+	{
+		$$ = ast.IndexVisibilityInvisible
 	}
 
 /**********************************Identifier********************************************/
@@ -4231,7 +4348,7 @@ UnReservedKeyword:
 | "RECOVER" | "CIPHER" | "SUBJECT" | "ISSUER" | "X509" | "NEVER" | "EXPIRE" | "ACCOUNT" | "INCREMENTAL" | "CPU" | "MEMORY" | "BLOCK" | "IO" | "CONTEXT" | "SWITCHES" | "PAGE" | "FAULTS" | "IPC" | "SWAPS" | "SOURCE"
 | "TRADITIONAL" | "SQL_BUFFER_RESULT" | "DIRECTORY" | "HISTORY" | "LIST" | "NODEGROUP" | "SYSTEM_TIME" | "PARTIAL" | "SIMPLE" | "REMOVE" | "PARTITIONING" | "STORAGE" | "DISK" | "STATS_SAMPLE_PAGES" | "SECONDARY_ENGINE" | "SECONDARY_LOAD" | "SECONDARY_UNLOAD" | "VALIDATION"
 | "WITHOUT" | "RTREE" | "EXCHANGE" | "COLUMN_FORMAT" | "REPAIR" | "IMPORT" | "DISCARD" | "TABLE_CHECKSUM"
-| "SQL_TSI_DAY" | "SQL_TSI_HOUR" | "SQL_TSI_MINUTE" | "SQL_TSI_MONTH" | "SQL_TSI_QUARTER" | "SQL_TSI_SECOND" | "SQL_TSI_WEEK" | "SQL_TSI_YEAR"
+| "SQL_TSI_DAY" | "SQL_TSI_HOUR" | "SQL_TSI_MINUTE" | "SQL_TSI_MONTH" | "SQL_TSI_QUARTER" | "SQL_TSI_SECOND" | "SQL_TSI_WEEK" | "SQL_TSI_YEAR" | "INVISIBLE" | "VISIBLE" | "TYPE"
 
 TiDBKeyword:
  "ADMIN" | "AGG_TO_COP" |"BUCKETS" | "CANCEL" | "CMSKETCH" | "DDL" | "DEPTH" | "DRAINER" | "JOBS" | "JOB" | "NODE_ID" | "NODE_STATE" | "PUMP" | "SAMPLES" | "STATS" | "STATS_META" | "STATS_HISTOGRAMS" | "STATS_BUCKETS" | "STATS_HEALTHY" | "TIDB"
@@ -4354,7 +4471,7 @@ ExprOrDefault:
 	}
 
 ColumnSetValue:
-	ColumnName eq Expression
+	ColumnName eq ExprOrDefault
 	{
 		$$ = &ast.Assignment{
 			Column:	$1.(*ast.ColumnName),
@@ -4498,6 +4615,21 @@ StringLiteral:
 		$$ = expr
 	}
 
+AlterOrderList:
+	AlterOrderItem
+	{
+		$$ = []*ast.AlterOrderItem{$1.(*ast.AlterOrderItem)}
+	}
+|	AlterOrderList ',' AlterOrderItem
+	{
+		$$ = append($1.([]*ast.AlterOrderItem), $3.(*ast.AlterOrderItem))
+	}
+
+AlterOrderItem:
+	ColumnName Order
+	{
+		$$ = &ast.AlterOrderItem{Column: $1.(*ast.ColumnName), Desc: $2.(bool)}
+	}
 
 OrderBy:
 	"ORDER" "BY" ByList
@@ -7570,20 +7702,29 @@ ShowStmt:
                         User:	$4.(*auth.UserIdentity),
                 }
         }
-|	"SHOW" "TABLE" TableName "REGIONS"
+|	"SHOW" "TABLE" TableName "REGIONS" WhereClauseOptional
 	{
-		$$ = &ast.ShowStmt{
+
+		stmt := &ast.ShowStmt{
 			Tp:	ast.ShowRegions,
 			Table:	$3.(*ast.TableName),
 		}
+		if $5 != nil {
+			stmt.Where = $5.(ast.ExprNode)
+		}
+		$$ = stmt
 	}
-|	"SHOW" "TABLE" TableName "INDEX" Identifier "REGIONS"
+|	"SHOW" "TABLE" TableName "INDEX" Identifier "REGIONS" WhereClauseOptional
 	{
-		$$ = &ast.ShowStmt{
+		stmt := &ast.ShowStmt{
 			Tp:	ast.ShowRegions,
 			Table:	$3.(*ast.TableName),
 			IndexName: model.NewCIStr($5),
 		}
+		if $7 != nil {
+			stmt.Where = $7.(ast.ExprNode)
+		}
+		$$ = stmt
 	}
 |	"SHOW" "GRANTS"
 	{
@@ -8164,6 +8305,10 @@ TraceableStmt:
 |	ReplaceIntoStmt
 |	UnionStmt
 |	LoadDataStmt
+|	BeginTransactionStmt
+|	CommitStmt
+|	RollbackStmt
+|	SetStmt
 
 ExplainableStmt:
 	SelectStmt
@@ -8396,6 +8541,23 @@ TableOption:
 		yylex.AppendError(yylex.Errorf("The SECONDARY_ENGINE clause is parsed but ignored by all storage engines."))
 		parser.lastErrorAsWarn()
 	}
+|	"UNION" EqOpt '(' TableNameListOpt ')'
+	{
+		// Parse it but will ignore it
+		$$ = &ast.TableOption{
+			Tp: ast.TableOptionUnion,
+			TableNames: $4.([]*ast.TableName),
+		}
+		yylex.AppendError(yylex.Errorf("The UNION option is parsed but ignored by all storage engines."))
+		parser.lastErrorAsWarn()
+	}
+|	"ENCRYPTION" EqOpt stringLit
+	{
+		// Parse it but will ignore it
+		$$ = &ast.TableOption{Tp: ast.TableOptionEncryption, StrValue: $3}
+		yylex.AppendError(yylex.Errorf("The ENCRYPTION clause is parsed but ignored by all storage engines."))
+		parser.lastErrorAsWarn()
+	}
 
 StatsPersistentVal:
 	"DEFAULT"
@@ -8559,8 +8721,8 @@ NumericType:
 		fopt := $2.(*ast.FloatOpt)
 		x := types.NewFieldType($1.(byte))
 		x.Flen = fopt.Flen
-		if x.Tp == mysql.TypeFloat && fopt.Decimal == types.UnspecifiedLength && x.Flen <= 53 {
-			if x.Flen > 24 {
+		if x.Tp == mysql.TypeFloat && fopt.Decimal == types.UnspecifiedLength && x.Flen <= mysql.MaxDoublePrecisionLength {
+			if x.Flen > mysql.MaxFloatPrecisionLength {
 				x.Tp = mysql.TypeDouble
 			}
 			x.Flen = types.UnspecifiedLength
@@ -8580,10 +8742,8 @@ NumericType:
 	{
 		x := types.NewFieldType($1.(byte))
 		x.Flen = $2.(int)
-		if x.Flen == types.UnspecifiedLength || x.Flen == 0 {
+		if x.Flen == types.UnspecifiedLength {
 			x.Flen = 1
-		} else if x.Flen > 64 {
-			yylex.AppendError(ErrTooBigDisplayWidth.GenWithStackByArgs(x.Flen))
 		}
 		$$ = x
 	}
@@ -8848,6 +9008,10 @@ NVarchar:
 | 	"NATIONAL" "CHAR" "VARYING"
 | 	"NCHAR" "VARYING"
 
+Year:
+	"YEAR"
+|	"SQL_TSI_YEAR"
+
 
 BlobType:
 	"TINYBLOB"
@@ -8938,7 +9102,7 @@ DateAndTimeType:
 		}
 		$$ = x
 	}
-|	"YEAR" OptFieldLen FieldOpts
+|	Year OptFieldLen FieldOpts
 	{
 		x := types.NewFieldType(mysql.TypeYear)
 		x.Flen = $2.(int)

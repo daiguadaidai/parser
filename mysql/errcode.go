@@ -883,8 +883,11 @@ const (
 	ErrRowInWrongPartition                                          = 1863
 	ErrErrorLast                                                    = 1863
 	ErrMaxExecTimeExceeded                                          = 1907
+	ErrInvalidFieldSize                                             = 3013
 	ErrInvalidJSONData                                              = 3069
 	ErrGeneratedColumnFunctionIsNotAllowed                          = 3102
+	ErrUnsupportedAlterInplaceOnVirtualColumn                       = 3103
+	ErrWrongFKOptionForGeneratedColumn                              = 3104
 	ErrBadGeneratedColumn                                           = 3105
 	ErrUnsupportedOnGeneratedColumn                                 = 3106
 	ErrGeneratedColumnNonPrior                                      = 3107
@@ -896,8 +899,9 @@ const (
 	ErrInvalidJSONPathWildcard                                      = 3149
 	ErrInvalidJSONContainsPathType                                  = 3150
 	ErrJSONUsedAsKey                                                = 3152
-	ErrBadUser                                                      = 3162
 	ErrInvalidJSONPathArrayCell                                     = 3165
+	ErrBadUser                                                      = 3162
+	ErrInvalidEncryptionOption                                      = 3184
 	ErrRoleNotGranted                                               = 3530
 	ErrWindowNoSuchWindow                                           = 3579
 	ErrWindowCircularityInWindowGraph                               = 3580
