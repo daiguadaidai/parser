@@ -697,10 +697,10 @@ func (s *testParserSuite) TestDMLStmt(c *C) {
 		// for dual
 		{"select 1 from dual", true, "SELECT 1"},
 		{"select 1 from dual limit 1", true, "SELECT 1 LIMIT 1"},
-		{"select 1 where exists (select 2)", false, ""},
-		{"select 1 from dual where not exists (select 2)", true, "SELECT 1 FROM DUAL WHERE NOT EXISTS (SELECT 2)"},
+		{"select 1 where exists (select 2)", true, "SELECT 1 WHERE EXISTS (SELECT 2)"},
+		{"select 1 from dual where not exists (select 2)", true, "SELECT 1 WHERE NOT EXISTS (SELECT 2)"},
 		{"select 1 as a from dual order by a", true, "SELECT 1 AS `a` ORDER BY `a`"},
-		{"select 1 as a from dual where 1 < any (select 2) order by a", true, "SELECT 1 AS `a` FROM DUAL WHERE 1<ANY (SELECT 2) ORDER BY `a`"},
+		{"select 1 as a from dual where 1 < any (select 2) order by a", true, "SELECT 1 AS `a` WHERE 1<ANY (SELECT 2) ORDER BY `a`"},
 		{"select 1 order by 1", true, "SELECT 1 ORDER BY 1"},
 
 		// for https://github.com/pingcap/tidb/issues/320
@@ -708,6 +708,13 @@ func (s *testParserSuite) TestDMLStmt(c *C) {
 
 		// for https://github.com/pingcap/tidb/issues/1050
 		{`SELECT /*!40001 SQL_NO_CACHE */ * FROM test WHERE 1 limit 0, 2000;`, true, "SELECT SQL_NO_CACHE * FROM `test` WHERE 1 LIMIT 0,2000"},
+
+		// for https://github.com/pingcap/parser/issues/115
+		{"select 1 where true", true, "SELECT 1 WHERE TRUE"},
+		{"select 1 group by 1", true, "SELECT 1 GROUP BY 1"},
+		{"select 1 having true", true, "SELECT 1 HAVING TRUE"},
+		{"select 1 order by 1", true, "SELECT 1 ORDER BY 1"},
+		{"select 1 limit 1", true, "SELECT 1 LIMIT 1"},
 
 		{`ANALYZE TABLE t`, true, "ANALYZE TABLE `t`"},
 
@@ -2687,6 +2694,9 @@ func (s *testParserSuite) TestDDL(c *C) {
 		{"ALTER TABLE t ADD a2 int CONSTRAINT ident primary key (a2))", false, ""},
 		{"ALTER TABLE t ADD a2 int CONSTRAINT ident unique key (a2))", false, ""},
 
+		{"ALTER TABLE t SET TIFLASH REPLICA 2 LOCATION LABELS 'a','b'", true, "ALTER TABLE `t` SET TIFLASH REPLICA 2 LOCATION LABELS 'a', 'b'"},
+		{"ALTER TABLE t SET TIFLASH REPLICA 0", true, "ALTER TABLE `t` SET TIFLASH REPLICA 0"},
+
 		// for issue 537
 		{"CREATE TABLE IF NOT EXISTS table_ident (a SQL_TSI_YEAR(4), b SQL_TSI_YEAR);", true, "CREATE TABLE IF NOT EXISTS `table_ident` (`a` YEAR(4),`b` YEAR)"},
 		{`CREATE TABLE IF NOT EXISTS table_ident (ident1 BOOL COMMENT "text_string" unique, ident2 SQL_TSI_YEAR(4) ZEROFILL);`, true, "CREATE TABLE IF NOT EXISTS `table_ident` (`ident1` TINYINT(1) COMMENT 'text_string' UNIQUE KEY,`ident2` YEAR(4))"},
@@ -3275,6 +3285,7 @@ func (s *testParserSuite) TestPrivilege(c *C) {
 		{"GRANT 'role1', 'role2' TO 'user1'@'localhost', 'user2'@'localhost';", true, "GRANT `role1`@`%`, `role2`@`%` TO `user1`@`localhost`, `user2`@`localhost`"},
 		{"GRANT 'u1' TO 'u1';", true, "GRANT `u1`@`%` TO `u1`@`%`"},
 		{"GRANT 'app_developer' TO 'dev1'@'localhost';", true, "GRANT `app_developer`@`%` TO `dev1`@`localhost`"},
+		{"GRANT SHUTDOWN ON *.* TO 'dev1'@'localhost';", true, "GRANT SHUTDOWN ON *.* TO `dev1`@`localhost`"},
 
 		// for revoke statement
 		{"REVOKE ALL ON db1.* FROM 'jeffrey'@'localhost';", true, "REVOKE ALL ON `db1`.* FROM `jeffrey`@`localhost`"},
@@ -3288,6 +3299,7 @@ func (s *testParserSuite) TestPrivilege(c *C) {
 		{"REVOKE SELECT (col1), INSERT (col1,col2) ON mydb.mytbl FROM 'someuser'@'somehost';", true, "REVOKE SELECT (`col1`), INSERT (`col1`,`col2`) ON `mydb`.`mytbl` FROM `someuser`@`somehost`"},
 		{"REVOKE all privileges on zabbix.* FROM 'zabbix'@'localhost' identified by 'password';", true, "REVOKE ALL ON `zabbix`.* FROM `zabbix`@`localhost` IDENTIFIED BY 'password'"},
 		{"REVOKE 'role1', 'role2' FROM 'user1'@'localhost', 'user2'@'localhost';", true, "REVOKE `role1`@`%`, `role2`@`%` FROM `user1`@`localhost`, `user2`@`localhost`"},
+		{"REVOKE SHUTDOWN ON *.* FROM 'dev1'@'localhost';", true, "REVOKE SHUTDOWN ON *.* FROM `dev1`@`localhost`"},
 	}
 	s.RunTest(c, table)
 }
@@ -3825,6 +3837,7 @@ func (s *testParserSuite) TestSessionManage(c *C) {
 		{"kill tidb query 23123", true, "KILL TIDB QUERY 23123"},
 		{"show processlist", true, "SHOW PROCESSLIST"},
 		{"show full processlist", true, "SHOW FULL PROCESSLIST"},
+		{"shutdown", true, "SHUTDOWN"},
 	}
 	s.RunTest(c, table)
 }

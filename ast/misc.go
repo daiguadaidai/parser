@@ -49,6 +49,7 @@ var (
 	_ StmtNode = &KillStmt{}
 	_ StmtNode = &CreateBindingStmt{}
 	_ StmtNode = &DropBindingStmt{}
+	_ StmtNode = &ShutdownStmt{}
 
 	_ Node = &PrivElem{}
 	_ Node = &VariableAssignment{}
@@ -322,6 +323,7 @@ type Prepared struct {
 	SchemaVersion int64
 	UseCache      bool
 	CachedPlan    interface{}
+	CachedNames   interface{}
 }
 
 // ExecuteStmt is a statement to execute PreparedStmt.
@@ -2001,6 +2003,28 @@ func (n *GrantRoleStmt) SecureText() string {
 	return text
 }
 
+// ShutdownStmt is a statement to stop the TiDB server.
+// See https://dev.mysql.com/doc/refman/5.7/en/shutdown.html
+type ShutdownStmt struct {
+	stmtNode
+}
+
+// Restore implements Node interface.
+func (n *ShutdownStmt) Restore(ctx *RestoreCtx) error {
+	ctx.WriteKeyWord("SHUTDOWN")
+	return nil
+}
+
+// Accept implements Node Accept interface.
+func (n *ShutdownStmt) Accept(v Visitor) (Node, bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	n = newNode.(*ShutdownStmt)
+	return v.Leave(n)
+}
+
 // Ident is the table identifier composed of schema name and table name.
 type Ident struct {
 	Schema model.CIStr
@@ -2050,11 +2074,16 @@ type TableOptimizerHint struct {
 
 // HintTable is table in the hint. It may have query block info.
 type HintTable struct {
+	DBName    model.CIStr
 	TableName model.CIStr
 	QBName    model.CIStr
 }
 
 func (ht *HintTable) Restore(ctx *RestoreCtx) {
+	if ht.DBName.L != "" {
+		ctx.WriteName(ht.DBName.String())
+		ctx.WriteKeyWord(".")
+	}
 	ctx.WriteName(ht.TableName.String())
 	if ht.QBName.L != "" {
 		ctx.WriteKeyWord("@")
