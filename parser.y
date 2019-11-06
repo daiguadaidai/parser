@@ -160,6 +160,7 @@ import (
 	keys			"KEYS"
 	kill			"KILL"
 	lag			"LAG"
+	language		"LANGUAGE"
 	lastValue		"LAST_VALUE"
 	lead			"LEAD"
 	leading			"LEADING"
@@ -280,6 +281,7 @@ import (
 	account		"ACCOUNT"
 	action		"ACTION"
 	after		"AFTER"
+	against		"AGAINST"
 	always		"ALWAYS"
 	algorithm	"ALGORITHM"
 	any 		"ANY"
@@ -342,6 +344,7 @@ import (
 	exchange	"EXCHANGE"
 	exclusive       "EXCLUSIVE"
 	execute		"EXECUTE"
+	expansion	"EXPANSION"
 	expire		"EXPIRE"
 	faultsSym	"FAULTS"
 	fields		"FIELDS"
@@ -355,6 +358,7 @@ import (
 	grants		"GRANTS"
 	hash		"HASH"
 	history		"HISTORY"
+	hosts		"HOSTS"
 	hour		"HOUR"
 	identified	"IDENTIFIED"
 	importKwd	"IMPORT"
@@ -376,6 +380,7 @@ import (
 	list		"LIST"
 	local		"LOCAL"
 	location	"LOCATION"
+	logs		"LOGS"
 	master		"MASTER"
 	microsecond	"MICROSECOND"
 	minute		"MINUTE"
@@ -832,9 +837,9 @@ import (
 	FieldList			"field expression list"
 	FieldTerminator			"Field terminator"
 	FlushOption			"Flush option"
+	FulltextSearchModifierOpt	"Fulltext modifier"
 	PluginNameList			"Plugin Name List"
 	TableRefsClause			"Table references clause"
-	FromClauseOptional		"Optional table references clause"
 	FieldItem			"Field item for load data clause"
 	FieldItemList			"Field items for load data clause"
 	FuncDatetimePrec		"Function datetime precision"
@@ -3896,6 +3901,14 @@ Expression:
 			$$ = &ast.UnaryOperationExpr{Op: opcode.Not, V: $2}
 		}
 	}
+|	"MATCH" '(' ColumnNameList ')' "AGAINST" '(' BitExpr FulltextSearchModifierOpt ')'
+	{
+		$$ = &ast.MatchAgainst {
+			ColumnNames: $3.([]*ast.ColumnName),
+			Against: $7,
+			Modifier: ast.FulltextSearchModifier($8.(int)),
+		}
+	}
 |	BoolPri IsOrNotOp trueKwd %prec is
 	{
 		$$ = &ast.IsTruthExpr{Expr:$1, Not: !$2.(bool), True: int64(1)}
@@ -3921,6 +3934,27 @@ MaxValueOrExpression:
 		$$ = $1
 	}
 
+FulltextSearchModifierOpt:
+	/* empty */
+	{
+		$$ = ast.FulltextSearchModifierNaturalLanguageMode
+	}
+|	"IN" "NATURAL" "LANGUAGE" "MODE"
+	{
+		$$ = ast.FulltextSearchModifierNaturalLanguageMode
+	}
+|	"IN" "NATURAL" "LANGUAGE" "MODE" "WITH" "QUERY" "EXPANSION"
+	{
+		$$ = ast.FulltextSearchModifierNaturalLanguageMode | ast.FulltextSearchModifierWithQueryExpansion
+	}
+| "IN" "BOOLEAN" "MODE"
+	{
+		$$ = ast.FulltextSearchModifierBooleanMode
+	}
+| "WITH" "QUERY" "EXPANSION"
+	{
+		$$ = ast.FulltextSearchModifierWithQueryExpansion
+	}
 
 logOr:
 	pipesAsOr
@@ -4448,6 +4482,7 @@ UnReservedKeyword:
 | "WITHOUT" | "RTREE" | "EXCHANGE" | "COLUMN_FORMAT" | "REPAIR" | "IMPORT" | "DISCARD" | "TABLE_CHECKSUM" | "UNICODE"
 | "SQL_TSI_DAY" | "SQL_TSI_HOUR" | "SQL_TSI_MINUTE" | "SQL_TSI_MONTH" | "SQL_TSI_QUARTER" | "SQL_TSI_SECOND" |
 "SQL_TSI_WEEK" | "SQL_TSI_YEAR" | "INVISIBLE" | "VISIBLE" | "TYPE" | "NOWAIT" | "REPLICA" | "LOCATION" | "LABELS"
+| "LOGS" | "HOSTS" | "AGAINST" | "EXPANSION"
 
 TiDBKeyword:
  "ADMIN" | "AGG_TO_COP" |"BUCKETS" | "BUILTINS" | "CANCEL" | "CMSKETCH" | "DDL" | "DEPTH" | "DRAINER" | "JOBS" | "JOB" | "NODE_ID" | "NODE_STATE" | "PUMP" | "SAMPLES" | "STATS" | "STATS_META" | "STATS_HISTOGRAMS" | "STATS_BUCKETS" | "STATS_HEALTHY" | "TIDB"
@@ -5994,16 +6029,6 @@ ShutdownStmt:
 		$$ = &ast.ShutdownStmt{}
 	}
 
-FromClauseOptional:
-	%prec empty
-	{
-		$$ = nil;
-	}
-|	"FROM" TableRefsClause
-	{
-		$$ = $2;
-	}
-
 SelectStmtBasic:
 	"SELECT" SelectStmtOpts SelectStmtFieldList
 	{
@@ -6033,27 +6058,46 @@ SelectStmtFromDualTable:
 	}
 
 SelectStmtFromTable:
-	SelectStmtBasic FromClauseOptional WhereClauseOptional SelectStmtGroup HavingClause WindowClauseOptional
+	SelectStmtBasic "FROM"
+	TableRefsClause WhereClauseOptional SelectStmtGroup HavingClause WindowClauseOptional
 	{
 		st := $1.(*ast.SelectStmt)
-		if $2 != nil {
-			st.From = $2.(*ast.TableRefsClause)
+		st.From = $3.(*ast.TableRefsClause)
+		lastField := st.Fields.Fields[len(st.Fields.Fields)-1]
+		if lastField.Expr != nil && lastField.AsName.O == "" {
+			lastEnd := parser.endOffset(&yyS[yypt-5])
+			lastField.SetText(parser.src[lastField.Offset:lastEnd])
 		}
+		if $4 != nil {
+			st.Where = $4.(ast.ExprNode)
+		}
+		if $5 != nil {
+			st.GroupBy = $5.(*ast.GroupByClause)
+		}
+		if $6 != nil {
+			st.Having = $6.(*ast.HavingClause)
+		}
+		if $7 != nil {
+		    st.WindowSpecs = ($7.([]ast.WindowSpec))
+		}
+		$$ = st
+	}
+
+SelectStmt:
+	SelectStmtBasic OrderByOptional SelectStmtLimit SelectLockOpt
+	{
+		st := $1.(*ast.SelectStmt)
+		st.LockTp = $4.(ast.SelectLockType)
 		lastField := st.Fields.Fields[len(st.Fields.Fields)-1]
 		if lastField.Expr != nil && lastField.AsName.O == "" {
 			src := parser.src
 			var lastEnd int
-			lastEnd = lastField.Offset
 			if $2 != nil {
-				lastEnd = parser.endOffset(&yyS[yypt-4])
+				lastEnd = yyS[yypt-2].offset-1
 			} else if $3 != nil {
-				lastEnd = parser.endOffset(&yyS[yypt-3])
-			} else if $4 != nil {
-				lastEnd = parser.endOffset(&yyS[yypt-2])
-			} else if $5 != nil {
-				lastEnd = parser.endOffset(&yyS[yypt-1])
-			} else if $6 != nil {
-				lastEnd = parser.endOffset(&yyS[yypt])
+				lastEnd = yyS[yypt-1].offset-1
+			} else if $4 != ast.SelectLockNone {
+				lastEnd = yyS[yypt].offset-1
 			} else {
 				lastEnd = len(src)
 				if src[lastEnd-1] == ';' {
@@ -6062,23 +6106,15 @@ SelectStmtFromTable:
 			}
 			lastField.SetText(src[lastField.Offset:lastEnd])
 		}
+		if $2 != nil {
+			st.OrderBy = $2.(*ast.OrderByClause)
+		}
 		if $3 != nil {
-			st.Where = $3.(ast.ExprNode)
-		}
-		if $4 != nil {
-			st.GroupBy = $4.(*ast.GroupByClause)
-		}
-		if $5 != nil {
-			st.Having = $5.(*ast.HavingClause)
-		}
-		if $6 != nil {
-		    	st.WindowSpecs = ($6.([]ast.WindowSpec))
+			st.Limit = $3.(*ast.Limit)
 		}
 		$$ = st
 	}
-
-SelectStmt:
-	SelectStmtFromDualTable OrderByOptional SelectStmtLimit SelectLockOpt
+|	SelectStmtFromDualTable OrderByOptional SelectStmtLimit SelectLockOpt
 	{
 		st := $1.(*ast.SelectStmt)
 		if $2 != nil {
@@ -6570,6 +6606,10 @@ IndexNameList:
 |	"PRIMARY"
 	{
 		$$ = []model.CIStr{model.NewCIStr($1)}
+	}
+|	IndexNameList ',' "PRIMARY"
+	{
+		$$ = append($1.([]model.CIStr), model.NewCIStr($3))
 	}
 
 IndexHintList:
@@ -7073,7 +7113,27 @@ SelectLockOpt:
 
 // See https://dev.mysql.com/doc/refman/5.7/en/union.html
 UnionStmt:
-	UnionClauseList "UNION" UnionOpt SelectStmtFromDualTable OrderByOptional
+	UnionClauseList "UNION" UnionOpt SelectStmtBasic OrderByOptional SelectStmtLimit SelectLockOpt
+	{
+		st := $4.(*ast.SelectStmt)
+		union := $1.(*ast.UnionStmt)
+		st.IsAfterUnionDistinct = $3.(bool)
+		lastSelect := union.SelectList.Selects[len(union.SelectList.Selects)-1]
+		endOffset := parser.endOffset(&yyS[yypt-5])
+		parser.setLastSelectFieldText(lastSelect, endOffset)
+		union.SelectList.Selects = append(union.SelectList.Selects, st)
+		if $5 != nil {
+		    union.OrderBy = $5.(*ast.OrderByClause)
+		}
+		if $6 != nil {
+		    union.Limit = $6.(*ast.Limit)
+		}
+		if $5 == nil && $6 == nil {
+		    st.LockTp = $7.(ast.SelectLockType)
+		}
+		$$ = union
+	}
+|	UnionClauseList "UNION" UnionOpt SelectStmtFromDualTable OrderByOptional
     SelectStmtLimit SelectLockOpt
 	{
 		st := $4.(*ast.SelectStmt)
@@ -8322,6 +8382,18 @@ FlushOption:
 		$$ = &ast.FlushStmt{
 			Tp: ast.FlushTiDBPlugin,
 			Plugins: $3.([]string),
+		}
+	}
+|	"HOSTS"
+	{
+		$$ = &ast.FlushStmt{
+			Tp: ast.FlushHosts,
+		}
+	}
+|	"LOGS"
+	{
+		$$ = &ast.FlushStmt{
+			Tp: ast.FlushLogs,
 		}
 	}
 |	TableOrTables TableNameListOpt WithReadLockOpt
