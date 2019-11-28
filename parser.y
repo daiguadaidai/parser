@@ -298,6 +298,7 @@ import (
 	btree		"BTREE"
 	byteType	"BYTE"
 	cascaded	"CASCADED"
+	capture		"CAPTURE"
 	charsetKwd	"CHARSET"
 	checksum	"CHECKSUM"
 	cipher		"CIPHER"
@@ -340,6 +341,7 @@ import (
 	enum 		"ENUM"
 	event		"EVENT"
 	events		"EVENTS"
+	evolve		"EVOLVE"
 	escape 		"ESCAPE"
 	exchange	"EXCHANGE"
 	exclusive       "EXCLUSIVE"
@@ -989,6 +991,7 @@ import (
 	SubPartitionOpt			"SubPartition option"
 	SubPartitionNumOpt		"SubPartition NUM option"
 	Symbol				"Constraint Symbol"
+	TableAliasRefList		"table alias reference list"
 	TableAsName			"table alias name"
 	TableAsNameOpt 			"table alias name optional"
 	TableElement			"table definition element"
@@ -998,6 +1001,7 @@ import (
 	TableLock			"Table name and lock type"
 	TableLockList			"Table lock list"
 	TableName			"Table name"
+	TableNameOptWild		"Table name with optional wildcard"
 	TableNameList			"Table name list"
 	TableNameListOpt		"Table name list opt"
 	TableOption			"create table option"
@@ -1051,6 +1055,7 @@ import (
 	OptLeadLagInfo		"Optional LEAD/LAG info"
 	OptNullTreatment	"Optional NULL treatment"
 	OptPartitionClause	"Optional PARTITION clause"
+	OptWild			"Optional Wildcard"
 	OptWindowOrderByClause	"Optional ORDER BY clause in WINDOW"
 	OptWindowFrameClause	"Optional FRAME clause in WINDOW"
 	OptWindowingClause	"Optional OVER clause"
@@ -1320,6 +1325,17 @@ AlterTableSpec:
 		op := &ast.AlterTableSpec{
 			Tp: ast.AlterTableOption,
 			Options:[]*ast.TableOption{{Tp: ast.TableOptionCharset, StrValue: $4.(string)}},
+		}
+		if $5 != "" {
+			op.Options = append(op.Options, &ast.TableOption{Tp: ast.TableOptionCollate, StrValue: $5.(string)})
+		}
+		$$ = op
+	}
+|	"CONVERT" "TO" CharsetKw "DEFAULT" OptCollate
+	{
+		op := &ast.AlterTableSpec{
+			Tp: ast.AlterTableOption,
+			Options:[]*ast.TableOption{{Tp: ast.TableOptionCharset, Default: true}},
 		}
 		if $5 != "" {
 			op.Options = append(op.Options, &ast.TableOption{Tp: ast.TableOptionCollate, StrValue: $5.(string)})
@@ -3657,7 +3673,7 @@ DeleteFromStmt:
 
 		$$ = x
 	}
-|	"DELETE" TableOptimizerHints PriorityOpt QuickOptional IgnoreOptional TableNameList "FROM" TableRefs WhereClauseOptional
+|	"DELETE" TableOptimizerHints PriorityOpt QuickOptional IgnoreOptional TableAliasRefList "FROM" TableRefs WhereClauseOptional
 	{
 		// Multiple Table
 		x := &ast.DeleteStmt{
@@ -3678,7 +3694,7 @@ DeleteFromStmt:
 		$$ = x
 	}
 
-|	"DELETE" TableOptimizerHints PriorityOpt QuickOptional IgnoreOptional "FROM" TableNameList "USING" TableRefs WhereClauseOptional
+|	"DELETE" TableOptimizerHints PriorityOpt QuickOptional IgnoreOptional "FROM" TableAliasRefList "USING" TableRefs WhereClauseOptional
 	{
 		// Multiple Table
 		x := &ast.DeleteStmt{
@@ -4525,9 +4541,9 @@ Identifier:
 identifier | UnReservedKeyword | NotKeywordToken | TiDBKeyword
 
 UnReservedKeyword:
- "ACTION" | "ASCII" | "AUTO_INCREMENT" | "AFTER" | "ALWAYS" | "AVG" | "BEGIN" | "BIT" | "BOOL" | "BOOLEAN" | "BTREE" | "BYTE" | "CLEANUP" | "CHARSET"
+ "ACTION" | "ASCII" | "AUTO_INCREMENT" | "AFTER" | "ALWAYS" | "AVG" | "BEGIN" | "BIT" | "BOOL" | "BOOLEAN" | "BTREE" | "BYTE" | "CAPTURE" |"CLEANUP" | "CHARSET"
 | "COLUMNS" | "COMMIT" | "COMPACT" | "COMPRESSED" | "CONSISTENT" | "CURRENT" | "DATA" | "DATE" %prec lowerThanStringLitToken| "DATETIME" | "DAY" | "DEALLOCATE" | "DO" | "DUPLICATE"
-| "DYNAMIC" | "ENCRYPTION" | "END" | "ENFORCED" | "ENGINE" | "ENGINES" | "ENUM" | "ERRORS" | "ESCAPE" | "EXECUTE" | "FIELDS" | "FIRST" | "FIXED" | "FLUSH" | "FOLLOWING" | "FORMAT" | "FULL" |"GLOBAL"
+| "DYNAMIC" | "ENCRYPTION" | "END" | "ENFORCED" | "ENGINE" | "ENGINES" | "ENUM" | "ERRORS" | "ESCAPE" | "EVOLVE" | "EXECUTE" | "FIELDS" | "FIRST" | "FIXED" | "FLUSH" | "FOLLOWING" | "FORMAT" | "FULL" |"GLOBAL"
 | "HASH" | "HOUR" | "INSERT_METHOD" | "LESS" | "LOCAL" | "LAST" | "NAMES" | "OFFSET" | "PASSWORD" %prec lowerThanEq | "PREPARE" | "QUICK" | "REBUILD" | "REDUNDANT" | "REORGANIZE"
 | "ROLE" |"ROLLBACK" | "SESSION" | "SIGNED" | "SHUTDOWN" | "SNAPSHOT" | "START" | "STATUS" | "OPEN"| "SUBPARTITIONS" | "SUBPARTITION" | "TABLES" | "TABLESPACE" | "TEXT" | "THAN" | "TIME" %prec lowerThanStringLitToken
 | "TIMESTAMP" %prec lowerThanStringLitToken | "TRACE" | "TRANSACTION" | "TRUNCATE" | "UNBOUNDED" | "UNKNOWN" | "VALUE" | "WARNINGS" | "YEAR" | "MODE"  | "WEEK"  | "ANY" | "SOME" | "USER" | "IDENTIFIED"
@@ -5968,10 +5984,6 @@ TableName:
 	{
 		$$ = &ast.TableName{Schema:model.NewCIStr($1),	Name:model.NewCIStr($3)}
 	}
-|	Identifier '.' '*'
-	{
-		$$ = &ast.TableName{Name:model.NewCIStr($1)}
-	}
 
 TableNameList:
 	TableName
@@ -5982,6 +5994,35 @@ TableNameList:
 |	TableNameList ',' TableName
 	{
 		$$ = append($1.([]*ast.TableName), $3.(*ast.TableName))
+	}
+
+TableNameOptWild:
+	Identifier OptWild
+	{
+		$$ = &ast.TableName{Name:model.NewCIStr($1)}
+	}
+|	Identifier '.' Identifier OptWild
+	{
+		$$ = &ast.TableName{Schema:model.NewCIStr($1),	Name:model.NewCIStr($3)}
+	}
+
+TableAliasRefList:
+	TableNameOptWild
+	{
+		tbl := []*ast.TableName{$1.(*ast.TableName)}
+		$$ = tbl
+	}
+|	TableAliasRefList ',' TableNameOptWild
+	{
+		$$ = append($1.([]*ast.TableName), $3.(*ast.TableName))
+	}
+
+OptWild:
+	%prec empty
+	{
+	}
+|	'.' '*'
+	{
 	}
 
 QuickOptional:
@@ -7853,6 +7894,24 @@ AdminStmt:
 			CreateStmt: $5.(*ast.CreateTableStmt),
 		}
 	}
+|	"ADMIN" "FLUSH" "BINDINGS"
+ 	{
+ 		$$ = &ast.AdminStmt{
+ 			Tp: ast.AdminFlushBindings,
+ 		}
+ 	}
+|	"ADMIN" "CAPTURE" "BINDINGS"
+ 	{
+ 		$$ = &ast.AdminStmt{
+ 			Tp: ast.AdminCaptureBindings,
+ 		}
+ 	}
+|	"ADMIN" "EVOLVE" "BINDINGS"
+ 	{
+ 		$$ = &ast.AdminStmt{
+ 			Tp: ast.AdminEvolveBindings,
+ 		}
+ 	}
 
 AdminShowSlow:
 	"RECENT" NUM
