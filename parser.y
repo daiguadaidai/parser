@@ -253,6 +253,7 @@ import (
 	union			"UNION"
 	unlock			"UNLOCK"
 	unsigned		"UNSIGNED"
+	until			"UNTIL"
 	update			"UPDATE"
 	usage			"USAGE"
 	use			"USE"
@@ -348,6 +349,7 @@ import (
 	execute		"EXECUTE"
 	expansion	"EXPANSION"
 	expire		"EXPIRE"
+	extended	"EXTENDED"
 	faultsSym	"FAULTS"
 	fields		"FIELDS"
 	first		"FIRST"
@@ -539,6 +541,7 @@ import (
 	dateSub			"DATE_SUB"
 	exact 	 		"EXACT"
 	extract			"EXTRACT"
+	flashback		"FLASHBACK"
 	getFormat		"GET_FORMAT"
 	groupConcat		"GROUP_CONCAT"
 	next_row_id		"NEXT_ROW_ID"
@@ -607,6 +610,8 @@ import (
 	hintINLJ	"INL_JOIN"
 	hintINLHJ	"INL_HASH_JOIN"
 	hintINLMJ	"INL_MERGE_JOIN"
+	hintSJI	        "SWAP_JOIN_INPUTS"
+	hintNSJI        "NO_SWAP_JOIN_INPUTS"
 	hintHASHAGG	"HASH_AGG"
 	hintSTREAMAGG	"STREAM_AGG"
 	hintUseIndex 		"USE_INDEX"
@@ -740,6 +745,7 @@ import (
 	ExplainStmt			"EXPLAIN statement"
 	ExplainableStmt			"explainable statement"
 	FlushStmt			"Flush statement"
+	FlashbackTableStmt		"Flashback table statement"
 	GrantStmt			"Grant statement"
 	GrantRoleStmt			"Grant role statement"
 	InsertIntoStmt			"INSERT INTO statement"
@@ -1014,6 +1020,8 @@ import (
 	TimestampUnit		"Time unit for 'TIMESTAMPADD' and 'TIMESTAMPDIFF'"
 	TimestampBound		"Timestamp bound for start transaction with timestamp mode"
 	LockType			"Table locks type"
+	FlashbackUntil			"Flashback until timestamp"
+	FlashbackToNewName		"Flashback to new name"
 
 	TransactionChar		"Transaction characteristic"
 	TransactionChars	"Transaction characteristic list"
@@ -2033,6 +2041,41 @@ RecoverTableStmt:
             JobNum: $4.(int64),
         }
     }
+
+/*******************************************************************
+ *
+ *  Flush Back Table Statement
+ *
+ *  Example:
+ *
+ *******************************************************************/
+ FlashbackTableStmt:
+ 	"FLASHBACK" "TABLE" TableName FlashbackUntil FlashbackToNewName
+ 	{
+		$$ = &ast.FlashBackTableStmt{
+			Table: $3.(*ast.TableName),
+			Timestamp: $4.(ast.ValueExpr),
+			NewName: $5.(string),
+		}
+ 	}
+
+FlashbackUntil:
+	"UNTIL" "TIMESTAMP" StringLiteral
+	{
+		$$ = $3
+	}
+
+ FlashbackToNewName:
+ 	{
+ 		$$ = ""
+ 	}
+ |	"TO" Identifier
+ 	{
+ 		$$ = $2
+ 	}
+
+
+
 
 /*******************************************************************
  *
@@ -4543,7 +4586,7 @@ identifier | UnReservedKeyword | NotKeywordToken | TiDBKeyword
 UnReservedKeyword:
  "ACTION" | "ASCII" | "AUTO_INCREMENT" | "AFTER" | "ALWAYS" | "AVG" | "BEGIN" | "BIT" | "BOOL" | "BOOLEAN" | "BTREE" | "BYTE" | "CAPTURE" |"CLEANUP" | "CHARSET"
 | "COLUMNS" | "COMMIT" | "COMPACT" | "COMPRESSED" | "CONSISTENT" | "CURRENT" | "DATA" | "DATE" %prec lowerThanStringLitToken| "DATETIME" | "DAY" | "DEALLOCATE" | "DO" | "DUPLICATE"
-| "DYNAMIC" | "ENCRYPTION" | "END" | "ENFORCED" | "ENGINE" | "ENGINES" | "ENUM" | "ERRORS" | "ESCAPE" | "EVOLVE" | "EXECUTE" | "FIELDS" | "FIRST" | "FIXED" | "FLUSH" | "FOLLOWING" | "FORMAT" | "FULL" |"GLOBAL"
+| "DYNAMIC" | "ENCRYPTION" | "END" | "ENFORCED" | "ENGINE" | "ENGINES" | "ENUM" | "ERRORS" | "ESCAPE" | "EVOLVE" | "EXECUTE" | "EXTENDED" | "FIELDS" | "FIRST" | "FIXED" | "FLUSH" | "FOLLOWING" | "FORMAT" | "FULL" |"GLOBAL"
 | "HASH" | "HOUR" | "INSERT_METHOD" | "LESS" | "LOCAL" | "LAST" | "NAMES" | "OFFSET" | "PASSWORD" %prec lowerThanEq | "PREPARE" | "QUICK" | "REBUILD" | "REDUNDANT" | "REORGANIZE"
 | "ROLE" |"ROLLBACK" | "SESSION" | "SIGNED" | "SHUTDOWN" | "SNAPSHOT" | "START" | "STATUS" | "OPEN"| "SUBPARTITIONS" | "SUBPARTITION" | "TABLES" | "TABLESPACE" | "TEXT" | "THAN" | "TIME" %prec lowerThanStringLitToken
 | "TIMESTAMP" %prec lowerThanStringLitToken | "TRACE" | "TRANSACTION" | "TRUNCATE" | "UNBOUNDED" | "UNKNOWN" | "VALUE" | "WARNINGS" | "YEAR" | "MODE"  | "WEEK"  | "ANY" | "SOME" | "USER" | "IDENTIFIED"
@@ -4563,7 +4606,7 @@ UnReservedKeyword:
 
 TiDBKeyword:
  "ADMIN" | "AGG_TO_COP" |"BUCKETS" | "BUILTINS" | "CANCEL" | "CMSKETCH" | "DDL" | "DEPTH" | "DRAINER" | "JOBS" | "JOB" | "NODE_ID" | "NODE_STATE" | "PUMP" | "SAMPLES" | "STATS" | "STATS_META" | "STATS_HISTOGRAMS" | "STATS_BUCKETS" | "STATS_HEALTHY" | "TIDB"
-| "HASH_JOIN" | "SM_JOIN" | "INL_JOIN" | "INL_HASH_JOIN"| "INL_MERGE_JOIN" | "HASH_AGG" | "STREAM_AGG" | "USE_INDEX" | "IGNORE_INDEX" | "USE_INDEX_MERGE" | "NO_INDEX_MERGE" | "USE_TOJA" | "ENABLE_PLAN_CACHE" | "USE_PLAN_CACHE"
+| "HASH_JOIN" | "SM_JOIN" | "INL_JOIN" | "INL_HASH_JOIN"| "INL_MERGE_JOIN" | "SWAP_JOIN_INPUTS" | "NO_SWAP_JOIN_INPUTS" | "HASH_AGG" | "STREAM_AGG" | "USE_INDEX" | "IGNORE_INDEX" | "USE_INDEX_MERGE" | "NO_INDEX_MERGE" | "USE_TOJA" | "ENABLE_PLAN_CACHE" | "USE_PLAN_CACHE"
 | "READ_CONSISTENT_REPLICA" | "READ_FROM_STORAGE" | "QB_NAME" | "QUERY_TYPE" | "MEMORY_QUOTA" | "OLAP" | "OLTP" | "TOPN" | "TIKV" | "TIFLASH" | "SPLIT" | "OPTIMISTIC" | "PESSIMISTIC" | "WIDTH" | "REGIONS" | "REGION"
 
 NotKeywordToken:
@@ -4571,7 +4614,7 @@ NotKeywordToken:
 | "INPLACE" | "INSTANT" | "INTERNAL" |"MIN" | "MAX" | "MAX_EXECUTION_TIME" | "NOW" | "RECENT" | "POSITION" | "SUBDATE" | "SUBSTRING" | "SUM"
 | "STD" | "STDDEV" | "STDDEV_POP" | "STDDEV_SAMP" | "VARIANCE" | "VAR_POP" | "VAR_SAMP"
 | "TIMESTAMPADD" | "TIMESTAMPDIFF" | "TOKUDB_DEFAULT" | "TOKUDB_FAST" | "TOKUDB_LZMA" | "TOKUDB_QUICKLZ" | "TOKUDB_SNAPPY" | "TOKUDB_SMALL" | "TOKUDB_UNCOMPRESSED" | "TOKUDB_ZLIB" | "TOP" | "TRIM" | "NEXT_ROW_ID"
-| "EXPR_PUSHDOWN_BLACKLIST" | "OPT_RULE_BLACKLIST" | "BOUND" | "EXACT" | "STALENESS" | "STRONG"
+| "EXPR_PUSHDOWN_BLACKLIST" | "OPT_RULE_BLACKLIST" | "BOUND" | "EXACT" | "STALENESS" | "STRONG" | "FLASHBACK"
 
 /************************************************************************************
  *
@@ -6941,6 +6984,14 @@ TableOptimizerHintOpt:
 	{
 		$$ = &ast.TableOptimizerHint{HintName: model.NewCIStr($1), QBName: $3.(model.CIStr), Tables: $4.([]ast.HintTable)}
 	}
+|	hintSJI '(' QueryBlockOpt HintTableList ')'
+	{
+		$$ = &ast.TableOptimizerHint{HintName: model.NewCIStr($1), QBName: $3.(model.CIStr), Tables: $4.([]ast.HintTable)}
+	}
+|	hintNSJI '(' QueryBlockOpt HintTableList ')'
+	{
+		$$ = &ast.TableOptimizerHint{HintName: model.NewCIStr($1), QBName: $3.(model.CIStr), Tables: $4.([]ast.HintTable)}
+	}
 |	hintINLMJ '(' QueryBlockOpt HintTableList ')'
 	{
 		$$ = &ast.TableOptimizerHint{HintName: model.NewCIStr($1), QBName: $3.(model.CIStr), Tables: $4.([]ast.HintTable)}
@@ -8319,7 +8370,7 @@ ShowTargetFilterable:
 		}
         $$ = show
 	}
-|	OptFull "COLUMNS" ShowTableAliasOpt ShowDatabaseNameOpt
+|	OptFull FieldsOrColumns ShowTableAliasOpt ShowDatabaseNameOpt
 	{
 		$$ = &ast.ShowStmt{
 			Tp:     ast.ShowColumns,
@@ -8328,14 +8379,14 @@ ShowTargetFilterable:
 			Full:	$1.(bool),
 		}
 	}
-|	OptFull "FIELDS" ShowTableAliasOpt ShowDatabaseNameOpt
+|	"EXTENDED" OptFull FieldsOrColumns ShowTableAliasOpt ShowDatabaseNameOpt
 	{
-		// SHOW FIELDS is a synonym for SHOW COLUMNS.
 		$$ = &ast.ShowStmt{
 			Tp:     ast.ShowColumns,
-			Table:	$3.(*ast.TableName),
-			DBName:	$4.(string),
-			Full:	$1.(bool),
+			Table:	$4.(*ast.TableName),
+			DBName:	$5.(string),
+			Full:	$2.(bool),
+			Extended: true,
 		}
 	}
 |	"WARNINGS"
@@ -8598,6 +8649,7 @@ Statement:
 |	DropStatsStmt
 |	DropBindingStmt
 |	FlushStmt
+|	FlashbackTableStmt
 |	GrantStmt
 |	GrantRoleStmt
 |	InsertIntoStmt

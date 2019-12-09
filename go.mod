@@ -1,6 +1,7 @@
 module github.com/daiguadaidai/parser
 
 require (
+	cloud.google.com/go v0.36.0 // indirect
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
 	github.com/coreos/bbolt v1.3.2 // indirect
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f // indirect
@@ -11,7 +12,6 @@ require (
 	github.com/cznic/y v0.0.0-20181122101901-b05e8c2e8d7b
 	github.com/daiguadaidai/tidb v0.0.0-20190707132446-e5f2e4b8edc0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
-	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/eknkc/amber v0.0.0-20171010120322-cdade1c07385 // indirect
 	github.com/golang/groupcache v0.0.0-20190129154638-5b532d6fd5ef // indirect
 	github.com/gorilla/websocket v1.4.0 // indirect

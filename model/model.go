@@ -93,6 +93,8 @@ type ColumnInfo struct {
 	types.FieldType     `json:"type"`
 	State               SchemaState `json:"state"`
 	Comment             string      `json:"comment"`
+	// A hidden column is used internally(expression index) and are not accessible by users.
+	Hidden bool `json:"hidden"`
 	// Version means the version of the column info.
 	// Version = 0: For OriginDefaultValue and DefaultValue of timestamp column will stores the default time in system time zone.
 	//              That is a bug if multiple TiDB servers in different system time zone.
@@ -139,6 +141,18 @@ func (c *ColumnInfo) GetDefaultValue() interface{} {
 		return string(c.DefaultValueBit)
 	}
 	return c.DefaultValue
+}
+
+// GetTypeDesc gets the description for column type.
+func (c *ColumnInfo) GetTypeDesc() string {
+	desc := c.FieldType.CompactStr()
+	if mysql.HasUnsignedFlag(c.Flag) && c.Tp != mysql.TypeBit && c.Tp != mysql.TypeYear {
+		desc += " unsigned"
+	}
+	if mysql.HasZerofillFlag(c.Flag) && c.Tp != mysql.TypeYear {
+		desc += " zerofill"
+	}
+	return desc
 }
 
 // FindColumnInfo finds ColumnInfo in cols by name.

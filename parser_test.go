@@ -70,7 +70,7 @@ func (s *testParserSuite) TestSimple(c *C) {
 		"delayed", "high_priority", "low_priority",
 		"cumeDist", "denseRank", "firstValue", "lag", "lastValue", "lead", "nthValue", "ntile",
 		"over", "percentRank", "rank", "row", "rows", "rowNumber", "window", "linear",
-		"match", "language",
+		"match", "language", "until",
 		// TODO: support the following keywords
 		// "with",
 	}
@@ -91,7 +91,7 @@ func (s *testParserSuite) TestSimple(c *C) {
 	// Testcase for unreserved keywords
 	unreservedKws := []string{
 		"auto_increment", "after", "begin", "bit", "bool", "boolean", "charset", "columns", "commit",
-		"date", "datediff", "datetime", "deallocate", "do", "from_days", "end", "engine", "engines", "execute", "first", "full",
+		"date", "datediff", "datetime", "deallocate", "do", "from_days", "end", "engine", "engines", "execute", "extended", "first", "full",
 		"local", "names", "offset", "password", "prepare", "quick", "rollback", "session", "signed",
 		"start", "global", "tables", "tablespace", "text", "time", "timestamp", "tidb", "transaction", "truncate", "unknown",
 		"value", "warnings", "year", "now", "substr", "subpartition", "subpartitions", "substring", "mode", "any", "some", "user", "identified",
@@ -865,6 +865,13 @@ func (s *testParserSuite) TestDBAStmt(c *C) {
 		// for show full columns
 		{"show columns in t;", true, "SHOW COLUMNS IN `t`"},
 		{"show full columns in t;", true, "SHOW FULL COLUMNS IN `t`"},
+		// for show extended columns
+		{`SHOW COLUMNS FROM City;`, true, "SHOW COLUMNS IN `City`"},
+		{`SHOW EXTENDED COLUMNS FROM City;`, true, "SHOW EXTENDED COLUMNS IN `City`"},
+		{`SHOW EXTENDED FIELDS FROM City;`, true, "SHOW EXTENDED COLUMNS IN `City`"},
+		// for show extended full columns
+		{`SHOW EXTENDED FULL COLUMNS FROM City;`, true, "SHOW EXTENDED FULL COLUMNS IN `City`"},
+		{`SHOW EXTENDED FULL FIELDS FROM City;`, true, "SHOW EXTENDED FULL COLUMNS IN `City`"},
 		// for show create table
 		{"show create table test.t", true, "SHOW CREATE TABLE `test`.`t`"},
 		{"show create table t", true, "SHOW CREATE TABLE `t`"},
@@ -2565,6 +2572,10 @@ func (s *testParserSuite) TestDDL(c *C) {
 		{"recover table t1 100", true, "RECOVER TABLE `t1` 100"},
 		{"recover table t1 abc", false, ""},
 
+		// for flashback table.
+		{"flashback table t until timestamp '2019-09-24 20:16:31.124 +0800 CST'", true, "FLASHBACK TABLE `t` UNTIL TIMESTAMP '2019-09-24 20:16:31.124 +0800 CST'"},
+		{"flashback table t until timestamp '2019-09-24 20:16:31.124 +0800 CST' TO t1", true, "FLASHBACK TABLE `t` UNTIL TIMESTAMP '2019-09-24 20:16:31.124 +0800 CST' TO `t1`"},
+
 		// for remove partitioning
 		{"alter table t remove partitioning", true, "ALTER TABLE `t` REMOVE PARTITIONING"},
 		{"alter table db.ident remove partitioning", true, "ALTER TABLE `db`.`ident` REMOVE PARTITIONING"},
@@ -3035,6 +3046,32 @@ func (s *testParserSuite) TestOptimizerHints(c *C) {
 	c.Assert(hints[1].Tables, HasLen, 2)
 	c.Assert(hints[1].Tables[0].TableName.L, Equals, "t3")
 	c.Assert(hints[1].Tables[1].TableName.L, Equals, "t4")
+
+	// Test HASH_JOIN with SWAP_JOIN_INPUTS/NO_SWAP_JOIN_INPUTS
+	// t1 for build, t4 for probe
+	stmt, _, err = parser.Parse("select /*+ HASH_JOIN(t1, T2), hash_join(t3, t4), SWAP_JOIN_INPUTS(t1), NO_SWAP_JOIN_INPUTS(t4)  */ c1, c2 from t1, t2 where t1.c1 = t2.c1", "", "")
+	c.Assert(err, IsNil)
+	selectStmt = stmt[0].(*ast.SelectStmt)
+
+	hints = selectStmt.TableHints
+	c.Assert(hints, HasLen, 4)
+	c.Assert(hints[0].HintName.L, Equals, "hash_join")
+	c.Assert(hints[0].Tables, HasLen, 2)
+	c.Assert(hints[0].Tables[0].TableName.L, Equals, "t1")
+	c.Assert(hints[0].Tables[1].TableName.L, Equals, "t2")
+
+	c.Assert(hints[1].HintName.L, Equals, "hash_join")
+	c.Assert(hints[1].Tables, HasLen, 2)
+	c.Assert(hints[1].Tables[0].TableName.L, Equals, "t3")
+	c.Assert(hints[1].Tables[1].TableName.L, Equals, "t4")
+
+	c.Assert(hints[2].HintName.L, Equals, "swap_join_inputs")
+	c.Assert(hints[2].Tables, HasLen, 1)
+	c.Assert(hints[2].Tables[0].TableName.L, Equals, "t1")
+
+	c.Assert(hints[3].HintName.L, Equals, "no_swap_join_inputs")
+	c.Assert(hints[3].Tables, HasLen, 1)
+	c.Assert(hints[3].Tables[0].TableName.L, Equals, "t4")
 
 	// Test MAX_EXECUTION_TIME
 	queries := []string{
@@ -3666,6 +3703,7 @@ func (s *testParserSuite) TestExplain(c *C) {
 		{"EXPLAIN FORMAT = TRADITIONAL SELECT 1", true, "EXPLAIN FORMAT = 'row' SELECT 1"},
 		{"EXPLAIN FORMAT = JSON FOR CONNECTION 1", true, "EXPLAIN FORMAT = 'json' FOR CONNECTION 1"},
 		{"EXPLAIN FORMAT = JSON SELECT 1", true, "EXPLAIN FORMAT = 'json' SELECT 1"},
+		{"EXPLAIN FORMAT = 'hint' SELECT 1", true, "EXPLAIN FORMAT = 'hint' SELECT 1"},
 	}
 	s.RunTest(c, table)
 }
