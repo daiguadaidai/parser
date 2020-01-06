@@ -14,10 +14,10 @@
 package charset
 
 import (
-	"github.com/daiguadaidai/parser/terror"
 	"strings"
 
 	"github.com/daiguadaidai/parser/mysql"
+	"github.com/daiguadaidai/parser/terror"
 	"github.com/pingcap/errors"
 )
 

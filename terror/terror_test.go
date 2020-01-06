@@ -15,11 +15,11 @@ package terror
 
 import (
 	"encoding/json"
+	"os"
 	"runtime"
 	"strings"
 	"testing"
 
-	"github.com/daiguadaidai/tidb/util/testleak"
 	. "github.com/pingcap/check"
 	"github.com/pingcap/errors"
 )
@@ -40,7 +40,6 @@ func (s *testTErrorSuite) TestErrCode(c *C) {
 }
 
 func (s *testTErrorSuite) TestTError(c *C) {
-	defer testleak.AfterTest(c)()
 	c.Assert(ClassParser.String(), Not(Equals), "")
 	c.Assert(ClassOptimizer.String(), Not(Equals), "")
 	c.Assert(ClassKV.String(), Not(Equals), "")
@@ -107,17 +106,17 @@ func call() error {
 }
 
 func (s *testTErrorSuite) TestTraceAndLocation(c *C) {
-	defer testleak.AfterTest(c)()
 	err := example()
 	stack := errors.ErrorStack(err)
 	lines := strings.Split(stack, "\n")
+	goroot := strings.ReplaceAll(runtime.GOROOT(), string(os.PathSeparator), "/")
 	var sysStack = 0
 	for _, line := range lines {
-		if strings.Contains(line, runtime.GOROOT()) {
+		if strings.Contains(line, goroot) {
 			sysStack++
 		}
 	}
-	c.Assert(len(lines)-(2*sysStack), Equals, 15)
+	c.Assert(len(lines)-(2*sysStack), Equals, 15, Commentf("stack =\n%s", stack))
 	var containTerr bool
 	for _, v := range lines {
 		if strings.Contains(v, "terror_test.go") {
@@ -129,7 +128,6 @@ func (s *testTErrorSuite) TestTraceAndLocation(c *C) {
 }
 
 func (s *testTErrorSuite) TestErrorEqual(c *C) {
-	defer testleak.AfterTest(c)()
 	e1 := errors.New("test error")
 	c.Assert(e1, NotNil)
 

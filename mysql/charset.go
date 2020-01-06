@@ -572,10 +572,10 @@ var CollationNames = map[string]uint8{
 
 // MySQL collation information.
 const (
-	UTF8Charset               = "utf8"
-	UTF8MB4Charset            = "utf8mb4"
-	DefaultCharset            = UTF8MB4Charset
-	Latin1CollationID         = 8
+	UTF8Charset    = "utf8"
+	UTF8MB4Charset = "utf8mb4"
+	DefaultCharset = UTF8MB4Charset
+	// DefaultCollationID is utf8mb4_bin(46)
 	DefaultCollationID        = 46
 	Latin1DefaultCollationID  = 47
 	ASCIIDefaultCollationID   = 65

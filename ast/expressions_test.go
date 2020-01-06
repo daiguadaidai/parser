@@ -16,7 +16,6 @@ package ast_test
 import (
 	. "github.com/daiguadaidai/parser/ast"
 	"github.com/daiguadaidai/parser/format"
-	_ "github.com/daiguadaidai/tidb/types/parser_driver"
 	. "github.com/pingcap/check"
 )
 

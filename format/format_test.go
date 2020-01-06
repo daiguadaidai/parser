@@ -19,7 +19,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/daiguadaidai/tidb/util/testleak"
 	. "github.com/pingcap/check"
 )
 
@@ -43,7 +42,6 @@ func checkFormat(c *C, f Formatter, buf *bytes.Buffer, str, expect string) {
 }
 
 func (s *testFormatSuite) TestFormat(c *C) {
-	defer testleak.AfterTest(c)()
 	str := "abc%d%%e%i\nx\ny\n%uz\n"
 	buf := &bytes.Buffer{}
 	f := IndentFormatter(buf, "\t")

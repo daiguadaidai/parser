@@ -52,6 +52,10 @@ var (
 	specCodePattern  = regexp.MustCompile(`\/\*!(M?[0-9]{5,6})?([^*]|\*+[^*/])*\*+\/`)
 	specCodeStart    = regexp.MustCompile(`^\/\*!(M?[0-9]{5,6})?[ \t]*`)
 	specCodeEnd      = regexp.MustCompile(`[ \t]*\*\/$`)
+	// SpecVersionCodePattern is a pattern for special comments with version.
+	SpecVersionCodePattern = regexp.MustCompile(`\/\*T![0-9]{5,6}([^*]|\*+[^*/])*\*+\/`)
+	specVersionCodeStart   = regexp.MustCompile(`^\/\*T![0-9]{5,6}[ \t]*`)
+	specVersionCodeValue   = regexp.MustCompile(`[0-9]{5,6}`)
 )
 
 func init() {
@@ -73,6 +77,11 @@ func init() {
 // TrimComment trim comment for special comment code of MySQL.
 func TrimComment(txt string) string {
 	txt = specCodeStart.ReplaceAllString(txt, "")
+	return specCodeEnd.ReplaceAllString(txt, "")
+}
+
+func TrimCodeVersionComment(txt string) string {
+	txt = specVersionCodeStart.ReplaceAllString(txt, "")
 	return specCodeEnd.ReplaceAllString(txt, "")
 }
 
@@ -100,7 +109,7 @@ func New() *Parser {
 		ast.NewParamMarkerExpr == nil ||
 		ast.NewHexLiteral == nil ||
 		ast.NewBitLiteral == nil {
-		panic("no parser driver (forgotten import?) https://github.com/pingcap/parser/issues/43")
+		panic("no parser driver (forgotten import?) https://github.com/daiguadaidai/parser/issues/43")
 	}
 
 	return &Parser{
@@ -282,4 +291,12 @@ func getUint64FromNUM(num interface{}) uint64 {
 		return v
 	}
 	return 0
+}
+
+func getInt64FromNUM(num interface{}) int64 {
+	switch v := num.(type) {
+	case int64:
+		return v
+	}
+	return -1
 }

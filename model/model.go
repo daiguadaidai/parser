@@ -235,6 +235,8 @@ type TableInfo struct {
 	ShardRowIDBits uint64
 	// MaxShardRowIDBits uses to record the max ShardRowIDBits be used so far.
 	MaxShardRowIDBits uint64 `json:"max_shard_row_id_bits"`
+	// AutoRandomBits is used to set the bit number to shard automatically when PKIsHandle.
+	AutoRandomBits uint64 `json:"auto_random_bits"`
 	// PreSplitRegions specify the pre-split region when create table.
 	// The pre-split region num is 2^(PreSplitRegions-1).
 	// And the PreSplitRegions should less than or equal to ShardRowIDBits.
@@ -245,6 +247,9 @@ type TableInfo struct {
 	Compression string `json:"compression"`
 
 	View *ViewInfo `json:"view"`
+
+	Sequence *SequenceInfo `json:"sequence"`
+
 	// Lock represent the table lock info.
 	Lock *TableLockInfo `json:"Lock"`
 
@@ -393,11 +398,9 @@ func (t *TableInfo) Clone() *TableInfo {
 
 // GetPkName will return the pk name if pk exists.
 func (t *TableInfo) GetPkName() CIStr {
-	if t.PKIsHandle {
-		for _, colInfo := range t.Columns {
-			if mysql.HasPriKeyFlag(colInfo.Flag) {
-				return colInfo.Name
-			}
+	for _, colInfo := range t.Columns {
+		if mysql.HasPriKeyFlag(colInfo.Flag) {
+			return colInfo.Name
 		}
 	}
 	return CIStr{}
@@ -429,6 +432,19 @@ func (t *TableInfo) IsAutoIncColUnsigned() bool {
 		return false
 	}
 	return mysql.HasUnsignedFlag(col.Flag)
+}
+
+// ContainsAutoRandomBits indicates whether a table contains auto_random column.
+func (t *TableInfo) ContainsAutoRandomBits() bool {
+	return t.AutoRandomBits != 0
+}
+
+// IsAutoRandomBitColUnsigned indicates whether the auto_random column is unsigned. Make sure the table contains auto_random before calling this method.
+func (t *TableInfo) IsAutoRandomBitColUnsigned() bool {
+	if !t.PKIsHandle || t.AutoRandomBits == 0 {
+		return false
+	}
+	return mysql.HasUnsignedFlag(t.GetPkColInfo().Flag)
 }
 
 // Cols returns the columns of the table in public state.
@@ -486,9 +502,14 @@ func (t *TableInfo) ColumnIsInIndex(c *ColumnInfo) bool {
 	return false
 }
 
-// IsView checks if tableinfo is a view
+// IsView checks if TableInfo is a view.
 func (t *TableInfo) IsView() bool {
 	return t.View != nil
+}
+
+// IsSequence checks if TableInfo is a sequence.
+func (t *TableInfo) IsSequence() bool {
+	return t.Sequence != nil
 }
 
 // ViewAlgorithm is VIEW's SQL AlGORITHM characteristic.
@@ -562,6 +583,33 @@ type ViewInfo struct {
 	SelectStmt  string             `json:"view_select"`
 	CheckOption ViewCheckOption    `json:"view_checkoption"`
 	Cols        []CIStr            `json:"view_cols"`
+}
+
+const (
+	DefaultSequenceCacheBool          = true
+	DefaultSequenceCycleBool          = false
+	DefaultSequenceOrderBool          = false
+	DefaultSequenceCacheValue         = int64(1000)
+	DefaultSequenceIncrementValue     = int64(1)
+	DefaultPositiveSequenceStartValue = int64(1)
+	DefaultNegativeSequenceStartValue = int64(-1)
+	DefaultPositiveSequenceMinValue   = int64(1)
+	DefaultPositiveSequenceMaxValue   = int64(9223372036854775806)
+	DefaultNegativeSequenceMaxValue   = int64(-1)
+	DefaultNegativeSequenceMinValue   = int64(-9223372036854775807)
+)
+
+// SequenceInfo provide meta data describing a DB sequence.
+type SequenceInfo struct {
+	Start      int64  `json:"sequence_start"`
+	Cache      bool   `json:"sequence_cache"`
+	Order      bool   `json:"sequence_order"`
+	Cycle      bool   `json:"sequence_cycle"`
+	MinValue   int64  `json:"sequence_min_value"`
+	MaxValue   int64  `json:"sequence_max_value"`
+	Increment  int64  `json:"sequence_increment"`
+	CacheValue int64  `json:"sequence_cache_value"`
+	Comment    string `json:"sequence_comment"`
 }
 
 // PartitionType is the type for PartitionInfo

@@ -20,7 +20,7 @@ import (
 	"github.com/daiguadaidai/parser"
 	. "github.com/daiguadaidai/parser/ast"
 	. "github.com/daiguadaidai/parser/format"
-	"github.com/daiguadaidai/tidb/types/parser_driver"
+	"github.com/daiguadaidai/parser/test_driver"
 	. "github.com/pingcap/check"
 )
 
@@ -99,7 +99,7 @@ func (checker *nodeTextCleaner) Enter(in Node) (out Node, skipChildren bool) {
 		node.FnName.O = strings.ToLower(node.FnName.O)
 		switch node.FnName.L {
 		case "convert":
-			node.Args[1].(*driver.ValueExpr).Datum.SetBytes(nil)
+			node.Args[1].(*test_driver.ValueExpr).Datum.SetBytes(nil)
 		}
 	case *AggregateFuncExpr:
 		node.F = strings.ToLower(node.F)

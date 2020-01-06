@@ -2,4 +2,4 @@ bin/
 y.go
 *.output
 .idea/
-test/
+coverage.txt

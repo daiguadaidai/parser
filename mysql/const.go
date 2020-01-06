@@ -168,6 +168,8 @@ const (
 const (
 	// SystemDB is the name of system database.
 	SystemDB = "mysql"
+	// GlobalPrivTable is the table in system db contains global scope privilege info.
+	GlobalPrivTable = "global_priv"
 	// UserTable is the table in system db contains user info.
 	UserTable = "User"
 	// DBTable is the table in system db contains db scope privilege info.
@@ -250,6 +252,9 @@ const (
 // AllPrivMask is the mask for PrivilegeType with all bits set to 1.
 // If it's passed to RequestVerification, it means any privilege would be OK.
 const AllPrivMask = AllPriv - 1
+
+// GlobalDBVisible is a collection of global privileges which allow user to see all databases name.
+const GlobalDBVisible = CreatePriv | SelectPriv | InsertPriv | UpdatePriv | DeletePriv | ShowDBPriv | DropPriv | AlterPriv | IndexPriv | CreateViewPriv | ShowViewPriv | GrantPriv
 
 // MySQL type maximum length.
 const (

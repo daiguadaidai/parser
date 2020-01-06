@@ -15,9 +15,8 @@ package ast_test
 
 import (
 	"github.com/daiguadaidai/parser"
-	"github.com/daiguadaidai/parser/ast"
 	. "github.com/daiguadaidai/parser/ast"
-	driver "github.com/daiguadaidai/tidb/types/parser_driver"
+	"github.com/daiguadaidai/parser/test_driver"
 	. "github.com/pingcap/check"
 )
 
@@ -148,7 +147,7 @@ func (ts *testFunctionsSuite) TestConvert(c *C) {
 
 		st := stmt.(*SelectStmt)
 		expr := st.Fields.Fields[0].Expr.(*FuncCallExpr)
-		charsetArg := expr.Args[1].(*driver.ValueExpr)
+		charsetArg := expr.Args[1].(*test_driver.ValueExpr)
 		c.Assert(charsetArg.GetString(), Equals, testCase.CharsetName)
 	}
 }
@@ -175,9 +174,9 @@ func (ts *testFunctionsSuite) TestChar(c *C) {
 		}
 		c.Assert(err, IsNil)
 
-		st := stmt.(*ast.SelectStmt)
+		st := stmt.(*SelectStmt)
 		expr := st.Fields.Fields[0].Expr.(*FuncCallExpr)
-		charsetArg := expr.Args[1].(*driver.ValueExpr)
+		charsetArg := expr.Args[1].(*test_driver.ValueExpr)
 		c.Assert(charsetArg.GetString(), Equals, testCase.CharsetName)
 	}
 }
@@ -196,7 +195,7 @@ func (ts *testDMLSuite) TestWindowFuncExprRestore(c *C) {
 		{"NTH_VALUE(val, 233) FROM FIRST IGNORE NULLS OVER (w)", "NTH_VALUE(`val`, 233) IGNORE NULLS OVER (`w`)"},
 	}
 	extractNodeFunc := func(node Node) Node {
-		return node.(*ast.SelectStmt).Fields.Fields[0].Expr
+		return node.(*SelectStmt).Fields.Fields[0].Expr
 	}
 	RunNodeRestoreTest(c, testCases, "select %s from t", extractNodeFunc)
 }

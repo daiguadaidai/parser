@@ -18,9 +18,11 @@ import (
 	"crypto/sha256"
 	"fmt"
 	hash2 "hash"
+	"reflect"
 	"strings"
 	"sync"
 	"unicode"
+	"unsafe"
 )
 
 // DigestHash generates the digest of statements.

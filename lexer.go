@@ -16,12 +16,12 @@ package parser
 import (
 	"bytes"
 	"fmt"
-
-	"github.com/daiguadaidai/parser/mysql"
 	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/daiguadaidai/parser/mysql"
 )
 
 var _ = yyLexer(&Scanner{})
@@ -442,6 +442,21 @@ func startWithSlash(s *Scanner) (tok int, pos Pos, lit string) {
 					pos.Col,
 					pos.Offset + sqlOffsetInComment(comment),
 				},
+			}
+		}
+
+		if strings.HasPrefix(comment, "/*T!") {
+			commentVersion := extractVersionCodeInComment(comment)
+			if commentVersion != CommentCodeNoVersion && commentVersion <= CommentCodeCurrentVersion {
+				sql := SpecVersionCodePattern.ReplaceAllStringFunc(comment, TrimCodeVersionComment)
+				s.specialComment = &mysqlSpecificCodeScanner{
+					Scanner: s.InheritScanner(sql),
+					Pos: Pos{
+						pos.Line,
+						pos.Col,
+						pos.Offset + sqlOffsetInComment(comment),
+					},
+				}
 			}
 		}
 

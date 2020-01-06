@@ -17,14 +17,15 @@ import (
 	"fmt"
 	"testing"
 
-	. "github.com/daiguadaidai/parser"
+	"github.com/daiguadaidai/parser"
 	"github.com/daiguadaidai/parser/ast"
 	"github.com/daiguadaidai/parser/charset"
 	"github.com/daiguadaidai/parser/mysql"
 	. "github.com/daiguadaidai/parser/types"
-	_ "github.com/daiguadaidai/tidb/types/parser_driver"
-	"github.com/daiguadaidai/tidb/util/testleak"
 	. "github.com/pingcap/check"
+
+	// import parser_driver
+	_ "github.com/daiguadaidai/parser/test_driver"
 )
 
 func TestT(t *testing.T) {
@@ -38,7 +39,6 @@ type testFieldTypeSuite struct {
 }
 
 func (s *testFieldTypeSuite) TestFieldType(c *C) {
-	defer testleak.AfterTest(c)()
 	ft := NewFieldType(mysql.TypeDuration)
 	c.Assert(ft.Flen, Equals, UnspecifiedLength)
 	c.Assert(ft.Decimal, Equals, UnspecifiedLength)
@@ -152,41 +152,45 @@ func (s *testFieldTypeSuite) TestFieldType(c *C) {
 	ft.Flen = 8
 	ft.Decimal = 2
 	c.Assert(ft.String(), Equals, "timestamp(2)")
+	c.Assert(HasCharset(ft), IsFalse)
 	ft = NewFieldType(mysql.TypeTimestamp)
 	ft.Flen = 8
 	ft.Decimal = 0
 	c.Assert(ft.String(), Equals, "timestamp")
-	c.Assert(HasCharset(ft), IsTrue)
+	c.Assert(HasCharset(ft), IsFalse)
 
 	ft = NewFieldType(mysql.TypeDatetime)
 	ft.Flen = 8
 	ft.Decimal = 2
 	c.Assert(ft.String(), Equals, "datetime(2)")
+	c.Assert(HasCharset(ft), IsFalse)
 	ft = NewFieldType(mysql.TypeDatetime)
 	ft.Flen = 8
 	ft.Decimal = 0
 	c.Assert(ft.String(), Equals, "datetime")
-	c.Assert(HasCharset(ft), IsTrue)
+	c.Assert(HasCharset(ft), IsFalse)
 
 	ft = NewFieldType(mysql.TypeDate)
 	ft.Flen = 8
 	ft.Decimal = 2
 	c.Assert(ft.String(), Equals, "date")
+	c.Assert(HasCharset(ft), IsFalse)
 	ft = NewFieldType(mysql.TypeDate)
 	ft.Flen = 8
 	ft.Decimal = 0
 	c.Assert(ft.String(), Equals, "date")
-	c.Assert(HasCharset(ft), IsTrue)
+	c.Assert(HasCharset(ft), IsFalse)
 
 	ft = NewFieldType(mysql.TypeYear)
 	ft.Flen = 4
 	ft.Decimal = 0
 	c.Assert(ft.String(), Equals, "year(4)")
+	c.Assert(HasCharset(ft), IsFalse)
 	ft = NewFieldType(mysql.TypeYear)
 	ft.Flen = 2
 	ft.Decimal = 2
 	c.Assert(ft.String(), Equals, "year(2)") // Note: Invalid year.
-	c.Assert(HasCharset(ft), IsTrue)
+	c.Assert(HasCharset(ft), IsFalse)
 }
 
 func (s *testFieldTypeSuite) TestHasCharsetFromStmt(c *C) {
