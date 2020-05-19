@@ -15,8 +15,10 @@ package ast_test
 
 import (
 	"github.com/daiguadaidai/parser"
+	"github.com/daiguadaidai/parser/ast"
 	. "github.com/daiguadaidai/parser/ast"
 	"github.com/daiguadaidai/parser/auth"
+	"github.com/daiguadaidai/parser/mysql"
 	. "github.com/pingcap/check"
 )
 
@@ -44,7 +46,7 @@ func (visitor1) Enter(in Node) (Node, bool) {
 }
 
 func (ts *testMiscSuite) TestMiscVisitorCover(c *C) {
-	valueExpr := NewValueExpr(42)
+	valueExpr := NewValueExpr(42, mysql.DefaultCharset, mysql.DefaultCollationName)
 	stmts := []Node{
 		&AdminStmt{},
 		&AlterUserStmt{},
@@ -227,7 +229,7 @@ func (ts *testMiscSuite) TestTableOptimizerHintRestore(c *C) {
 		{"TIDB_HJ(t1,t2)", "TIDB_HJ(`t1`, `t2`)"},
 		{"TIDB_HJ(@sel1 t1,t2)", "TIDB_HJ(@`sel1` `t1`, `t2`)"},
 		{"TIDB_HJ(t1@sel1,t2@sel2)", "TIDB_HJ(`t1`@`sel1`, `t2`@`sel2`)"},
-		{"SM_JOIN(t1,t2)", "SM_JOIN(`t1`, `t2`)"},
+		{"MERGE_JOIN(t1,t2)", "MERGE_JOIN(`t1`, `t2`)"},
 		{"INL_JOIN(t1,t2)", "INL_JOIN(`t1`, `t2`)"},
 		{"HASH_JOIN(t1,t2)", "HASH_JOIN(`t1`, `t2`)"},
 		{"MAX_EXECUTION_TIME(3000)", "MAX_EXECUTION_TIME(3000)"},
@@ -238,6 +240,9 @@ func (ts *testMiscSuite) TestTableOptimizerHintRestore(c *C) {
 		{"USE_TOJA(TRUE)", "USE_TOJA(TRUE)"},
 		{"USE_TOJA(FALSE)", "USE_TOJA(FALSE)"},
 		{"USE_TOJA(@sel1 TRUE)", "USE_TOJA(@`sel1` TRUE)"},
+		{"USE_CASCADES(TRUE)", "USE_CASCADES(TRUE)"},
+		{"USE_CASCADES(FALSE)", "USE_CASCADES(FALSE)"},
+		{"USE_CASCADES(@sel1 TRUE)", "USE_CASCADES(@`sel1` TRUE)"},
 		{"QUERY_TYPE(OLAP)", "QUERY_TYPE(OLAP)"},
 		{"QUERY_TYPE(OLTP)", "QUERY_TYPE(OLTP)"},
 		{"QUERY_TYPE(@sel1 OLTP)", "QUERY_TYPE(@`sel1` OLTP)"},
@@ -255,6 +260,7 @@ func (ts *testMiscSuite) TestTableOptimizerHintRestore(c *C) {
 		{"READ_CONSISTENT_REPLICA(@sel1)", "READ_CONSISTENT_REPLICA(@`sel1`)"},
 		{"QB_NAME(sel1)", "QB_NAME(`sel1`)"},
 		{"READ_FROM_STORAGE(@sel TIFLASH[t1, t2])", "READ_FROM_STORAGE(@`sel` TIFLASH[`t1`, `t2`])"},
+		{"TIME_RANGE('2020-02-02 10:10:10','2020-02-02 11:10:10')", "TIME_RANGE('2020-02-02 10:10:10', '2020-02-02 11:10:10')"},
 	}
 	extractNodeFunc := func(node Node) Node {
 		return node.(*SelectStmt).TableHints[0]
@@ -271,4 +277,41 @@ func (ts *testMiscSuite) TestChangeStmtRestore(c *C) {
 		return node.(*ChangeStmt)
 	}
 	RunNodeRestoreTest(c, testCases, "%s", extractNodeFunc)
+}
+
+func (ts *testMiscSuite) TestBRIESecureText(c *C) {
+	testCases := []struct {
+		input   string
+		secured string
+	}{
+		{
+			input:   "restore database * from 'local:///tmp/br01' snapshot = 23333",
+			secured: `^\QRESTORE DATABASE * FROM 'local:///tmp/br01' SNAPSHOT = 23333\E$`,
+		},
+		{
+			input:   "backup database * to 's3://bucket/prefix?region=us-west-2'",
+			secured: `^\QBACKUP DATABASE * TO 's3://bucket/prefix?region=us-west-2'\E$`,
+		},
+		{
+			// we need to use regexp to match to avoid the random ordering since a map was used.
+			// unfortunately Go's regexp doesn't support lookahead assertion, so the test case below
+			// has false positives.
+			input:   "backup database * to 's3://bucket/prefix?access-key=abcdefghi&secret-access-key=123&force-path-style=true'",
+			secured: `^\QBACKUP DATABASE * TO 's3://bucket/prefix?\E((access-key=xxxxxx|force-path-style=true|secret-access-key=xxxxxx)(&|'$)){3}`,
+		},
+		{
+			input:   "backup database * to 'gcs://bucket/prefix?access-key=irrelevant&credentials-file=/home/user/secrets.txt'",
+			secured: `^\QBACKUP DATABASE * TO 'gcs://bucket/prefix?\E((access-key=irrelevant|credentials-file=/home/user/secrets\.txt)(&|'$)){2}`,
+		},
+	}
+
+	parser := parser.New()
+	for _, tc := range testCases {
+		comment := Commentf("input = %s", tc.input)
+		node, err := parser.ParseOneStmt(tc.input, "", "")
+		c.Assert(err, IsNil, comment)
+		n, ok := node.(ast.SensitiveStmtNode)
+		c.Assert(ok, IsTrue, comment)
+		c.Assert(n.SecureText(), Matches, tc.secured, comment)
+	}
 }

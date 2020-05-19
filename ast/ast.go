@@ -18,7 +18,7 @@ package ast
 import (
 	"io"
 
-	. "github.com/daiguadaidai/parser/format"
+	"github.com/daiguadaidai/parser/format"
 	"github.com/daiguadaidai/parser/model"
 	"github.com/daiguadaidai/parser/types"
 )
@@ -27,7 +27,7 @@ import (
 // Interfaces embed Node should have 'Node' name suffix.
 type Node interface {
 	// Restore returns the sql text from ast tree
-	Restore(ctx *RestoreCtx) error
+	Restore(ctx *format.RestoreCtx) error
 	// Accept accepts Visitor to visit itself.
 	// The returned node should replace original node.
 	// ok returns false to stop visiting.
