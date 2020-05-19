@@ -2889,6 +2889,7 @@ type PartitionDefinitionClause interface {
 	// `pt` can be 0 and `columns` can be -1 to skip checking the clause against
 	// the partition type or number of columns in the expression list.
 	Validate(pt model.PartitionType, columns int) error
+	pretty(ctx *format.RestoreCtx, level, indent int64) error
 }
 
 type PartitionDefinitionClauseNone struct{}
