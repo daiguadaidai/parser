@@ -19,7 +19,7 @@ import (
 	"strings"
 )
 
-func (n *FuncCallExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *FuncCallExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	var specialLiteral string
 	switch n.FnName.L {
 	case DateLiteral:
@@ -124,7 +124,7 @@ func (n *FuncCallExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error
 	return nil
 }
 
-func (n *FuncCastExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *FuncCastExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	switch n.FunctionType {
 	case CastFunction:
 		ctx.WriteKeyWord("CAST")
@@ -153,12 +153,12 @@ func (n *FuncCastExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error
 	return nil
 }
 
-func (n *TrimDirectionExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *TrimDirectionExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord(n.Direction.String())
 	return nil
 }
 
-func (n *AggregateFuncExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *AggregateFuncExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord(n.F)
 	ctx.WritePlain("(")
 	if n.Distinct {
@@ -198,7 +198,7 @@ func (n *AggregateFuncExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) 
 	return nil
 }
 
-func (n *WindowFuncExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *WindowFuncExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord(n.F)
 	ctx.WritePlain("(")
 	for i, v := range n.Args {
@@ -226,12 +226,12 @@ func (n *WindowFuncExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) err
 	return nil
 }
 
-func (n *TimeUnitExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *TimeUnitExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord(n.Unit.String())
 	return nil
 }
 
-func (n *GetFormatSelectorExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *GetFormatSelectorExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord(n.Selector.String())
 	return nil
 }

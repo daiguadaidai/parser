@@ -19,13 +19,13 @@ import (
 	"github.com/pingcap/errors"
 )
 
-func (n *Join) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *Join) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if ctx.JoinLevel != 0 {
 		ctx.WritePlain("(")
 		defer ctx.WritePlain(")")
 	}
 	ctx.JoinLevel++
-	if err := n.Left.Pretty(ctx, level, indent); err != nil {
+	if err := n.Left.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore Join.Left")
 	}
 	ctx.JoinLevel--
@@ -75,13 +75,13 @@ func (n *Join) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *TableName) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *TableName) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	n.restoreName(ctx)
 	n.restorePartitions(ctx)
 	return n.restoreIndexHints(ctx)
 }
 
-func (n *IndexHint) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *IndexHint) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	indexHintType := ""
 	switch n.HintType {
 	case 1:
@@ -121,7 +121,7 @@ func (n *IndexHint) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *DeleteTableList) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *DeleteTableList) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	for i, t := range n.Tables {
 		if i != 0 {
 			ctx.WritePlain(",")
@@ -133,7 +133,7 @@ func (n *DeleteTableList) Pretty(ctx *format.RestoreCtx, level, indent int64) er
 	return nil
 }
 
-func (n *OnCondition) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *OnCondition) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("ON ")
 	if err := n.Expr.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred while restore OnCondition.Expr")
@@ -141,7 +141,7 @@ func (n *OnCondition) Pretty(ctx *format.RestoreCtx, level, indent int64) error 
 	return nil
 }
 
-func (n *TableSource) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *TableSource) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	needParen := false
 	switch n.Source.(type) {
 	case *SelectStmt, *UnionStmt:
@@ -186,7 +186,7 @@ func (n *TableSource) Pretty(ctx *format.RestoreCtx, level, indent int64) error 
 	return nil
 }
 
-func (n *WildCardField) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *WildCardField) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if schema := n.Schema.String(); schema != "" {
 		ctx.WriteName(schema)
 		ctx.WritePlain(".")
@@ -199,7 +199,7 @@ func (n *WildCardField) Pretty(ctx *format.RestoreCtx, level, indent int64) erro
 	return nil
 }
 
-func (n *SelectField) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *SelectField) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if n.WildCard != nil {
 		if err := n.WildCard.Restore(ctx); err != nil {
 			return errors.Annotate(err, "An error occurred while restore SelectField.WildCard")
@@ -217,7 +217,7 @@ func (n *SelectField) Pretty(ctx *format.RestoreCtx, level, indent int64) error 
 	return nil
 }
 
-func (n *FieldList) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *FieldList) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	for i, v := range n.Fields {
 		if i != 0 {
 			ctx.WritePlain(", ")
@@ -229,14 +229,14 @@ func (n *FieldList) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *TableRefsClause) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *TableRefsClause) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if err := n.TableRefs.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred while restore TableRefsClause.TableRefs")
 	}
 	return nil
 }
 
-func (n *ByItem) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *ByItem) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if err := n.Expr.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred while restore ByItem.Expr")
 	}
@@ -246,7 +246,7 @@ func (n *ByItem) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *GroupByClause) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *GroupByClause) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("GROUP BY ")
 	for i, v := range n.Items {
 		if i != 0 {
@@ -259,7 +259,7 @@ func (n *GroupByClause) Pretty(ctx *format.RestoreCtx, level, indent int64) erro
 	return nil
 }
 
-func (n *HavingClause) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *HavingClause) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("HAVING ")
 	if err := n.Expr.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred while restore HavingClause.Expr")
@@ -267,7 +267,7 @@ func (n *HavingClause) Pretty(ctx *format.RestoreCtx, level, indent int64) error
 	return nil
 }
 
-func (n *OrderByClause) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *OrderByClause) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("ORDER BY ")
 	for i, item := range n.Items {
 		if i != 0 {
@@ -280,7 +280,7 @@ func (n *OrderByClause) Pretty(ctx *format.RestoreCtx, level, indent int64) erro
 	return nil
 }
 
-func (n *SelectStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *SelectStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("SELECT ")
 
 	if n.SelectStmtOpts.Priority > 0 {
@@ -406,7 +406,7 @@ func (n *SelectStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *UnionSelectList) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *UnionSelectList) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	for i, selectStmt := range n.Selects {
 		if i != 0 {
 			ctx.WriteKeyWord(" UNION ")
@@ -427,7 +427,7 @@ func (n *UnionSelectList) Pretty(ctx *format.RestoreCtx, level, indent int64) er
 	return nil
 }
 
-func (n *UnionStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *UnionStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if err := n.SelectList.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred while restore UnionStmt.SelectList")
 	}
@@ -448,7 +448,7 @@ func (n *UnionStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *Assignment) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *Assignment) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if err := n.Column.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred while restore Assignment.Column")
 	}
@@ -459,7 +459,7 @@ func (n *Assignment) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *LoadDataStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *LoadDataStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("LOAD DATA ")
 	if n.IsLocal {
 		ctx.WriteKeyWord("LOCAL ")
@@ -518,7 +518,7 @@ func (n *LoadDataStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error
 	return nil
 }
 
-func (n *FieldsClause) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *FieldsClause) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if n.Terminated != "\t" || n.Escaped != '\\' {
 		ctx.WriteKeyWord(" FIELDS")
 		if n.Terminated != "\t" {
@@ -544,7 +544,7 @@ func (n *FieldsClause) Pretty(ctx *format.RestoreCtx, level, indent int64) error
 	return nil
 }
 
-func (n *LinesClause) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *LinesClause) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if n.Starting != "" || n.Terminated != "\n" {
 		ctx.WriteKeyWord(" LINES")
 		if n.Starting != "" {
@@ -559,7 +559,7 @@ func (n *LinesClause) Pretty(ctx *format.RestoreCtx, level, indent int64) error 
 	return nil
 }
 
-func (n *InsertStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *InsertStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if n.IsReplace {
 		ctx.WriteKeyWord("REPLACE ")
 	} else {
@@ -667,7 +667,7 @@ func (n *InsertStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *DeleteStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *DeleteStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("DELETE ")
 
 	if n.TableHints != nil && len(n.TableHints) != 0 {
@@ -746,7 +746,7 @@ func (n *DeleteStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *UpdateStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *UpdateStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("UPDATE ")
 
 	if n.TableHints != nil && len(n.TableHints) != 0 {
@@ -814,7 +814,7 @@ func (n *UpdateStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *Limit) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *Limit) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("LIMIT ")
 	if n.Offset != nil {
 		if err := n.Offset.Restore(ctx); err != nil {
@@ -828,7 +828,7 @@ func (n *Limit) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *ShowStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *ShowStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	restoreOptFull := func() {
 		if n.Full {
 			ctx.WriteKeyWord("FULL ")
@@ -1094,7 +1094,7 @@ func (n *ShowStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *WindowSpec) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *WindowSpec) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if name := n.Name.String(); name != "" {
 		ctx.WriteName(name)
 		if n.OnlyAlias {
@@ -1133,7 +1133,7 @@ func (n *WindowSpec) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *SelectIntoOption) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *SelectIntoOption) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if n.Tp != SelectIntoOutfile {
 		// only support SELECT ... INTO OUTFILE now
 		return errors.New("Unsupported SelectionInto type")
@@ -1154,7 +1154,7 @@ func (n *SelectIntoOption) Pretty(ctx *format.RestoreCtx, level, indent int64) e
 	return nil
 }
 
-func (n *PartitionByClause) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *PartitionByClause) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("PARTITION BY ")
 	for i, v := range n.Items {
 		if i != 0 {
@@ -1167,7 +1167,7 @@ func (n *PartitionByClause) Pretty(ctx *format.RestoreCtx, level, indent int64) 
 	return nil
 }
 
-func (n *FrameClause) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *FrameClause) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	switch n.Type {
 	case Rows:
 		ctx.WriteKeyWord("ROWS")
@@ -1188,7 +1188,7 @@ func (n *FrameClause) Pretty(ctx *format.RestoreCtx, level, indent int64) error 
 	return nil
 }
 
-func (n *FrameBound) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *FrameBound) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if n.UnBounded {
 		ctx.WriteKeyWord("UNBOUNDED")
 	}
@@ -1217,7 +1217,7 @@ func (n *FrameBound) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *SplitRegionStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *SplitRegionStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("SPLIT ")
 	if n.SplitSyntaxOpt != nil {
 		if n.SplitSyntaxOpt.HasRegionFor {
@@ -1254,7 +1254,7 @@ func (n *SplitRegionStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) er
 	return err
 }
 
-func (n *SplitOption) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *SplitOption) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if len(n.ValueLists) == 0 {
 		ctx.WriteKeyWord("BETWEEN ")
 		ctx.WritePlain("(")

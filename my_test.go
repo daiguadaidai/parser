@@ -21,7 +21,7 @@ func Test_Degester_01(t *testing.T) {
 	fmt.Println(digest)
 
 	var sb strings.Builder
-	if err = stmt.Pretty(format1.NewRestoreCtx(format1.DefaultRestoreFlags, &sb), 0, 0); err != nil {
+	if err = stmt.Pretty(format1.NewRestoreCtx(format1.DefaultRestoreFlags, &sb), 0, 0, ""); err != nil {
 		t.Fatalf("Restore 出错. %s", err.Error())
 	}
 

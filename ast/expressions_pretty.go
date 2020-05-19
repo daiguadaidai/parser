@@ -19,7 +19,7 @@ import (
 	"github.com/pingcap/errors"
 )
 
-func (n *BetweenExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *BetweenExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if err := n.Expr.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred while restore BetweenExpr.Expr")
 	}
@@ -52,7 +52,7 @@ func prettyBinaryOpWithSpacesAround(ctx *format.RestoreCtx, op opcode.Op, level,
 	return nil
 }
 
-func (n *BinaryOperationExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *BinaryOperationExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if err := n.L.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred when restore BinaryOperationExpr.L")
 	}
@@ -66,7 +66,7 @@ func (n *BinaryOperationExpr) Pretty(ctx *format.RestoreCtx, level, indent int64
 	return nil
 }
 
-func (n *WhenClause) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *WhenClause) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("WHEN ")
 	if err := n.Expr.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred while restore WhenClauses.Expr")
@@ -78,7 +78,7 @@ func (n *WhenClause) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *CaseExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *CaseExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("CASE")
 	if n.Value != nil {
 		ctx.WritePlain(" ")
@@ -103,7 +103,7 @@ func (n *CaseExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *SubqueryExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *SubqueryExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WritePlain("(")
 	if err := n.Query.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred while restore SubqueryExpr.Query")
@@ -112,7 +112,7 @@ func (n *SubqueryExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error
 	return nil
 }
 
-func (n *CompareSubqueryExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *CompareSubqueryExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if err := n.L.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred while restore CompareSubqueryExpr.L")
 	}
@@ -130,14 +130,14 @@ func (n *CompareSubqueryExpr) Pretty(ctx *format.RestoreCtx, level, indent int64
 	return nil
 }
 
-func (n *TableNameExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *TableNameExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if err := n.Name.Restore(ctx); err != nil {
 		return errors.Trace(err)
 	}
 	return nil
 }
 
-func (n *ColumnName) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *ColumnName) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if n.Schema.O != "" {
 		ctx.WriteName(n.Schema.O)
 		ctx.WritePlain(".")
@@ -150,14 +150,14 @@ func (n *ColumnName) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *ColumnNameExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *ColumnNameExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if err := n.Name.Restore(ctx); err != nil {
 		return errors.Trace(err)
 	}
 	return nil
 }
 
-func (n *DefaultExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *DefaultExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("DEFAULT")
 	if n.Name != nil {
 		ctx.WritePlain("(")
@@ -169,7 +169,7 @@ func (n *DefaultExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error 
 	return nil
 }
 
-func (n *ExistsSubqueryExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *ExistsSubqueryExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if n.Not {
 		ctx.WriteKeyWord("NOT EXISTS ")
 	} else {
@@ -181,7 +181,7 @@ func (n *ExistsSubqueryExpr) Pretty(ctx *format.RestoreCtx, level, indent int64)
 	return nil
 }
 
-func (n *PatternInExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *PatternInExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if err := n.Expr.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred while restore PatternInExpr.Expr")
 	}
@@ -209,7 +209,7 @@ func (n *PatternInExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) erro
 	return nil
 }
 
-func (n *IsNullExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *IsNullExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if err := n.Expr.Restore(ctx); err != nil {
 		return errors.Trace(err)
 	}
@@ -221,7 +221,7 @@ func (n *IsNullExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *IsTruthExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *IsTruthExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if err := n.Expr.Restore(ctx); err != nil {
 		return errors.Trace(err)
 	}
@@ -238,7 +238,7 @@ func (n *IsTruthExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error 
 	return nil
 }
 
-func (n *PatternLikeExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *PatternLikeExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if err := n.Expr.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred while restore PatternLikeExpr.Expr")
 	}
@@ -262,7 +262,7 @@ func (n *PatternLikeExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) er
 	return nil
 }
 
-func (n *ParenthesesExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *ParenthesesExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WritePlain("(")
 	if err := n.Expr.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred when restore ParenthesesExpr.Expr")
@@ -271,12 +271,12 @@ func (n *ParenthesesExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) er
 	return nil
 }
 
-func (n *PositionExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *PositionExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WritePlainf("%d", n.N)
 	return nil
 }
 
-func (n *PatternRegexpExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *PatternRegexpExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if err := n.Expr.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred while restore PatternRegexpExpr.Expr")
 	}
@@ -294,7 +294,7 @@ func (n *PatternRegexpExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) 
 	return nil
 }
 
-func (n *RowExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *RowExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("ROW")
 	ctx.WritePlain("(")
 	for i, v := range n.Values {
@@ -309,7 +309,7 @@ func (n *RowExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *UnaryOperationExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *UnaryOperationExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if err := n.Op.Restore(ctx); err != nil {
 		return errors.Trace(err)
 	}
@@ -319,7 +319,7 @@ func (n *UnaryOperationExpr) Pretty(ctx *format.RestoreCtx, level, indent int64)
 	return nil
 }
 
-func (n *ValuesExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *ValuesExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("VALUES")
 	ctx.WritePlain("(")
 	if err := n.Column.Restore(ctx); err != nil {
@@ -330,7 +330,7 @@ func (n *ValuesExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *VariableExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *VariableExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if n.IsSystem {
 		ctx.WritePlain("@@")
 		if n.ExplicitScope {
@@ -356,12 +356,12 @@ func (n *VariableExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error
 	return nil
 }
 
-func (n *MaxValueExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *MaxValueExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("MAXVALUE")
 	return nil
 }
 
-func (n *MatchAgainst) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *MatchAgainst) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("MATCH")
 	ctx.WritePlain(" (")
 	for i, v := range n.ColumnNames {
@@ -390,7 +390,7 @@ func (n *MatchAgainst) Pretty(ctx *format.RestoreCtx, level, indent int64) error
 	return nil
 }
 
-func (n *SetCollationExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *SetCollationExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if err := n.Expr.Restore(ctx); err != nil {
 		return errors.Trace(err)
 	}

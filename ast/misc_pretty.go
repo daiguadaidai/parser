@@ -21,7 +21,7 @@ import (
 	"strconv"
 )
 
-func (n *AuthOption) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *AuthOption) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("IDENTIFIED BY ")
 	if n.ByAuthString {
 		ctx.WriteString(n.AuthString)
@@ -32,7 +32,7 @@ func (n *AuthOption) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *TraceStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *TraceStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("TRACE ")
 	if n.Format != "json" {
 		ctx.WriteKeyWord("FORMAT")
@@ -46,7 +46,7 @@ func (n *TraceStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *ExplainForStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *ExplainForStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("EXPLAIN ")
 	ctx.WriteKeyWord("FORMAT ")
 	ctx.WritePlain("= ")
@@ -58,7 +58,7 @@ func (n *ExplainForStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) err
 	return nil
 }
 
-func (n *ExplainStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *ExplainStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if showStmt, ok := n.Stmt.(*ShowStmt); ok {
 		ctx.WriteKeyWord("DESC ")
 		if err := showStmt.Table.Restore(ctx); err != nil {
@@ -87,7 +87,7 @@ func (n *ExplainStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error 
 	return nil
 }
 
-func (n *PrepareStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *PrepareStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("PREPARE ")
 	ctx.WriteName(n.Name)
 	ctx.WriteKeyWord(" FROM ")
@@ -104,13 +104,13 @@ func (n *PrepareStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error 
 	return errors.New("An error occurred while restore PrepareStmt")
 }
 
-func (n *DeallocateStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *DeallocateStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("DEALLOCATE PREPARE ")
 	ctx.WriteName(n.Name)
 	return nil
 }
 
-func (n *ExecuteStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *ExecuteStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("EXECUTE ")
 	ctx.WriteName(n.Name)
 	if len(n.UsingVars) > 0 {
@@ -127,7 +127,7 @@ func (n *ExecuteStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error 
 	return nil
 }
 
-func (n *BeginStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *BeginStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if n.Mode == "" {
 		if n.ReadOnly {
 			ctx.WriteKeyWord("START TRANSACTION READ ONLY")
@@ -159,13 +159,13 @@ func (n *BeginStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *BinlogStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *BinlogStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("BINLOG ")
 	ctx.WriteString(n.Str)
 	return nil
 }
 
-func (n CompletionType) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n CompletionType) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	switch n {
 	case CompletionTypeDefault:
 		break
@@ -177,7 +177,7 @@ func (n CompletionType) Pretty(ctx *format.RestoreCtx, level, indent int64) erro
 	return nil
 }
 
-func (n *CommitStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *CommitStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("COMMIT")
 	if err := n.CompletionType.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred while restore CommitStmt.CompletionType")
@@ -185,7 +185,7 @@ func (n *CommitStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *RollbackStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *RollbackStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("ROLLBACK")
 	if err := n.CompletionType.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred while restore RollbackStmt.CompletionType")
@@ -193,13 +193,13 @@ func (n *RollbackStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error
 	return nil
 }
 
-func (n *UseStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *UseStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("USE ")
 	ctx.WriteName(n.DBName)
 	return nil
 }
 
-func (n *VariableAssignment) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *VariableAssignment) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if n.IsSystem {
 		ctx.WritePlain("@@")
 		if n.IsGlobal {
@@ -231,7 +231,7 @@ func (n *VariableAssignment) Pretty(ctx *format.RestoreCtx, level, indent int64)
 	return nil
 }
 
-func (n *FlushStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *FlushStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("FLUSH ")
 	if n.NoWriteToBinLog {
 		ctx.WriteKeyWord("NO_WRITE_TO_BINLOG ")
@@ -291,7 +291,7 @@ func (n *FlushStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *KillStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *KillStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("KILL")
 	if n.TiDBExtension {
 		ctx.WriteKeyWord(" TIDB")
@@ -303,7 +303,7 @@ func (n *KillStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *SetStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *SetStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("SET ")
 	for i, v := range n.Variables {
 		if i != 0 {
@@ -316,7 +316,7 @@ func (n *SetStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *SetConfigStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *SetConfigStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("SET CONFIG ")
 	if n.Type != "" {
 		ctx.WriteKeyWord(n.Type)
@@ -329,7 +329,7 @@ func (n *SetConfigStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) erro
 	return n.Value.Restore(ctx)
 }
 
-func (n *SetPwdStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *SetPwdStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("SET PASSWORD")
 	if n.User != nil {
 		ctx.WriteKeyWord(" FOR ")
@@ -342,7 +342,7 @@ func (n *SetPwdStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *ChangeStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *ChangeStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("CHANGE ")
 	ctx.WriteKeyWord(n.NodeType)
 	ctx.WriteKeyWord(" TO NODE_STATE ")
@@ -353,7 +353,7 @@ func (n *ChangeStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *SetRoleStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *SetRoleStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("SET ROLE")
 	switch n.SetRoleOpt {
 	case SetRoleDefault:
@@ -378,7 +378,7 @@ func (n *SetRoleStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error 
 	return nil
 }
 
-func (n *SetDefaultRoleStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *SetDefaultRoleStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("SET DEFAULT ROLE")
 	switch n.SetRoleOpt {
 	case SetRoleNone:
@@ -411,7 +411,7 @@ func (n *SetDefaultRoleStmt) Pretty(ctx *format.RestoreCtx, level, indent int64)
 	return nil
 }
 
-func (n *UserSpec) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *UserSpec) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if err := n.User.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred while restore UserSpec.User")
 	}
@@ -424,7 +424,7 @@ func (n *UserSpec) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (t *TLSOption) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (t *TLSOption) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	switch t.Type {
 	case TslNone:
 		ctx.WriteKeyWord("NONE")
@@ -447,7 +447,7 @@ func (t *TLSOption) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (r *ResourceOption) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (r *ResourceOption) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	switch r.Type {
 	case MaxQueriesPerHour:
 		ctx.WriteKeyWord("MAX_QUERIES_PER_HOUR ")
@@ -464,7 +464,7 @@ func (r *ResourceOption) Pretty(ctx *format.RestoreCtx, level, indent int64) err
 	return nil
 }
 
-func (p *PasswordOrLockOption) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (p *PasswordOrLockOption) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	switch p.Type {
 	case PasswordExpire:
 		ctx.WriteKeyWord("PASSWORD EXPIRE")
@@ -486,7 +486,7 @@ func (p *PasswordOrLockOption) Pretty(ctx *format.RestoreCtx, level, indent int6
 	return nil
 }
 
-func (n *CreateUserStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *CreateUserStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if n.IsCreateRole {
 		ctx.WriteKeyWord("CREATE ROLE ")
 	} else {
@@ -537,7 +537,7 @@ func (n *CreateUserStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) err
 	return nil
 }
 
-func (n *AlterUserStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *AlterUserStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("ALTER USER ")
 	if n.IfExists {
 		ctx.WriteKeyWord("IF EXISTS ")
@@ -591,7 +591,7 @@ func (n *AlterUserStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) erro
 	return nil
 }
 
-func (n *AlterInstanceStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *AlterInstanceStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("ALTER INSTANCE")
 	if n.ReloadTLS {
 		ctx.WriteKeyWord(" RELOAD TLS")
@@ -602,7 +602,7 @@ func (n *AlterInstanceStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) 
 	return nil
 }
 
-func (n *DropUserStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *DropUserStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if n.IsDropRole {
 		ctx.WriteKeyWord("DROP ROLE ")
 	} else {
@@ -622,7 +622,7 @@ func (n *DropUserStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error
 	return nil
 }
 
-func (n *CreateBindingStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *CreateBindingStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("CREATE ")
 	if n.GlobalScope {
 		ctx.WriteKeyWord("GLOBAL ")
@@ -640,7 +640,7 @@ func (n *CreateBindingStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) 
 	return nil
 }
 
-func (n *DropBindingStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *DropBindingStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("DROP ")
 	if n.GlobalScope {
 		ctx.WriteKeyWord("GLOBAL ")
@@ -660,7 +660,7 @@ func (n *DropBindingStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) er
 	return nil
 }
 
-func (n *DoStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *DoStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("DO ")
 	for i, v := range n.Exprs {
 		if i != 0 {
@@ -673,7 +673,7 @@ func (n *DoStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *ShowSlow) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *ShowSlow) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	switch n.Tp {
 	case ShowSlowRecent:
 		ctx.WriteKeyWord("RECENT ")
@@ -696,7 +696,7 @@ func (n *ShowSlow) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *AdminStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *AdminStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	restoreTables := func() error {
 		for i, v := range n.Tables {
 			if i != 0 {
@@ -830,7 +830,7 @@ func (n *AdminStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *PrivElem) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *PrivElem) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if n.Priv == 0 {
 		ctx.WritePlain("/* UNSUPPORTED TYPE */")
 	} else if n.Priv == mysql.AllPriv {
@@ -858,7 +858,7 @@ func (n *PrivElem) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n ObjectTypeType) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n ObjectTypeType) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	switch n {
 	case ObjectTypeNone:
 		// do nothing
@@ -870,7 +870,7 @@ func (n ObjectTypeType) Pretty(ctx *format.RestoreCtx, level, indent int64) erro
 	return nil
 }
 
-func (n *GrantLevel) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *GrantLevel) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	switch n.Level {
 	case GrantLevelDB:
 		if n.DBName == "" {
@@ -891,7 +891,7 @@ func (n *GrantLevel) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *RevokeStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *RevokeStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("REVOKE ")
 	for i, v := range n.Privs {
 		if i != 0 {
@@ -923,7 +923,7 @@ func (n *RevokeStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *RevokeRoleStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *RevokeRoleStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("REVOKE ")
 	for i, role := range n.Roles {
 		if i != 0 {
@@ -945,7 +945,7 @@ func (n *RevokeRoleStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) err
 	return nil
 }
 
-func (n *GrantStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *GrantStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("GRANT ")
 	for i, v := range n.Privs {
 		if i != 0 && v.Priv != 0 {
@@ -995,7 +995,7 @@ func (n *GrantStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *GrantRoleStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *GrantRoleStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("GRANT ")
 	if len(n.Roles) > 0 {
 		for i, role := range n.Roles {
@@ -1019,12 +1019,12 @@ func (n *GrantRoleStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) erro
 	return nil
 }
 
-func (n *ShutdownStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *ShutdownStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("SHUTDOWN")
 	return nil
 }
 
-func (n *BRIEStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *BRIEStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord(n.Kind.String())
 
 	switch {
@@ -1088,7 +1088,7 @@ func (n *BRIEStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (ht *HintTable) Pretty(ctx *format.RestoreCtx, level, indent int64) {
+func (ht *HintTable) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) {
 	if ht.DBName.L != "" {
 		ctx.WriteName(ht.DBName.String())
 		ctx.WriteKeyWord(".")
@@ -1100,7 +1100,7 @@ func (ht *HintTable) Pretty(ctx *format.RestoreCtx, level, indent int64) {
 	}
 }
 
-func (n *TableOptimizerHint) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *TableOptimizerHint) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord(n.HintName.String())
 	ctx.WritePlain("(")
 	if n.QBName.L != "" {

@@ -42,7 +42,7 @@ type Node interface {
 	// SetText sets original text to the Node.
 	SetText(text string)
 	// sql美化方法
-	Pretty(ctx *format.RestoreCtx, level, indent int64) error
+	Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error
 }
 
 // Flags indicates whether an expression contains certain types of expression.

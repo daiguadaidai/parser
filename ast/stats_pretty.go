@@ -18,7 +18,7 @@ import (
 	"github.com/pingcap/errors"
 )
 
-func (n *AnalyzeTableStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *AnalyzeTableStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if n.Incremental {
 		ctx.WriteKeyWord("ANALYZE INCREMENTAL TABLE ")
 	} else {
@@ -65,7 +65,7 @@ func (n *AnalyzeTableStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) e
 	return nil
 }
 
-func (n *DropStatsStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *DropStatsStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("DROP STATS ")
 	if err := n.Table.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred while add table")
@@ -74,7 +74,7 @@ func (n *DropStatsStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) erro
 	return nil
 }
 
-func (n *LoadStatsStmt) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *LoadStatsStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("LOAD STATS ")
 	ctx.WriteString(n.Path)
 	return nil

@@ -23,7 +23,7 @@ import (
 	"github.com/daiguadaidai/parser/mysql"
 )
 
-func (n *ValueExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *ValueExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	switch n.Kind() {
 	case KindNull:
 		ctx.WriteKeyWord("NULL")
@@ -71,7 +71,7 @@ func (n *ValueExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
 	return nil
 }
 
-func (n *ParamMarkerExpr) Pretty(ctx *format.RestoreCtx, level, indent int64) error {
+func (n *ParamMarkerExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WritePlain("?")
 	return nil
 }
