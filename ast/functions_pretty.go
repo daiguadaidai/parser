@@ -31,7 +31,7 @@ func (n *FuncCallExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char 
 	}
 	if specialLiteral != "" {
 		ctx.WritePlain(specialLiteral)
-		if err := n.Args[0].Restore(ctx); err != nil {
+		if err := n.Args[0].Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore FuncCastExpr.Expr")
 		}
 		return nil
@@ -41,34 +41,34 @@ func (n *FuncCallExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char 
 	ctx.WritePlain("(")
 	switch n.FnName.L {
 	case "convert":
-		if err := n.Args[0].Restore(ctx); err != nil {
+		if err := n.Args[0].Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore FuncCastExpr.Expr")
 		}
 		ctx.WriteKeyWord(" USING ")
 		ctx.WriteKeyWord(n.Args[1].GetType().Charset)
 	case "adddate", "subdate", "date_add", "date_sub":
-		if err := n.Args[0].Restore(ctx); err != nil {
+		if err := n.Args[0].Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore FuncCallExpr.Args[0]")
 		}
 		ctx.WritePlain(", ")
 		ctx.WriteKeyWord("INTERVAL ")
-		if err := n.Args[1].Restore(ctx); err != nil {
+		if err := n.Args[1].Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore FuncCallExpr.Args[1]")
 		}
 		ctx.WritePlain(" ")
-		if err := n.Args[2].Restore(ctx); err != nil {
+		if err := n.Args[2].Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore FuncCallExpr.Args[2]")
 		}
 	case "extract":
-		if err := n.Args[0].Restore(ctx); err != nil {
+		if err := n.Args[0].Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore FuncCallExpr.Args[0]")
 		}
 		ctx.WriteKeyWord(" FROM ")
-		if err := n.Args[1].Restore(ctx); err != nil {
+		if err := n.Args[1].Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore FuncCallExpr.Args[1]")
 		}
 	case "position":
-		if err := n.Args[0].Restore(ctx); err != nil {
+		if err := n.Args[0].Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore FuncCallExpr")
 		}
 		ctx.WriteKeyWord(" IN ")
@@ -78,14 +78,14 @@ func (n *FuncCallExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char 
 	case "trim":
 		switch len(n.Args) {
 		case 3:
-			if err := n.Args[2].Restore(ctx); err != nil {
+			if err := n.Args[2].Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore FuncCallExpr.Args[2]")
 			}
 			ctx.WritePlain(" ")
 			fallthrough
 		case 2:
 			if n.Args[1].(ValueExpr).GetValue() != nil {
-				if err := n.Args[1].Restore(ctx); err != nil {
+				if err := n.Args[1].Pretty(ctx, level, indent, char); err != nil {
 					return errors.Annotatef(err, "An error occurred while restore FuncCallExpr.Args[1]")
 				}
 				ctx.WritePlain(" ")
@@ -93,19 +93,19 @@ func (n *FuncCallExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char 
 			ctx.WriteKeyWord("FROM ")
 			fallthrough
 		case 1:
-			if err := n.Args[0].Restore(ctx); err != nil {
+			if err := n.Args[0].Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore FuncCallExpr.Args[0]")
 			}
 		}
 	case WeightString:
-		if err := n.Args[0].Restore(ctx); err != nil {
+		if err := n.Args[0].Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore FuncCallExpr.(WEIGHT_STRING).Args[0]")
 		}
 		if len(n.Args) == 3 {
 			ctx.WriteKeyWord(" AS ")
 			ctx.WriteKeyWord(n.Args[1].(ValueExpr).GetValue().(string))
 			ctx.WritePlain("(")
-			if err := n.Args[2].Restore(ctx); err != nil {
+			if err := n.Args[2].Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore FuncCallExpr.(WEIGHT_STRING).Args[2]")
 			}
 			ctx.WritePlain(")")
@@ -115,7 +115,7 @@ func (n *FuncCallExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char 
 			if i != 0 {
 				ctx.WritePlain(", ")
 			}
-			if err := argv.Restore(ctx); err != nil {
+			if err := argv.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore FuncCallExpr.Args %d", i)
 			}
 		}
@@ -129,7 +129,7 @@ func (n *FuncCastExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char 
 	case CastFunction:
 		ctx.WriteKeyWord("CAST")
 		ctx.WritePlain("(")
-		if err := n.Expr.Restore(ctx); err != nil {
+		if err := n.Expr.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore FuncCastExpr.Expr")
 		}
 		ctx.WriteKeyWord(" AS ")
@@ -138,7 +138,7 @@ func (n *FuncCastExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char 
 	case CastConvertFunction:
 		ctx.WriteKeyWord("CONVERT")
 		ctx.WritePlain("(")
-		if err := n.Expr.Restore(ctx); err != nil {
+		if err := n.Expr.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore FuncCastExpr.Expr")
 		}
 		ctx.WritePlain(", ")
@@ -146,7 +146,7 @@ func (n *FuncCastExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char 
 		ctx.WritePlain(")")
 	case CastBinaryOperator:
 		ctx.WriteKeyWord("BINARY ")
-		if err := n.Expr.Restore(ctx); err != nil {
+		if err := n.Expr.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore FuncCastExpr.Expr")
 		}
 	}
@@ -170,18 +170,18 @@ func (n *AggregateFuncExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, 
 			if i != 0 {
 				ctx.WritePlain(", ")
 			}
-			if err := n.Args[i].Restore(ctx); err != nil {
+			if err := n.Args[i].Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore AggregateFuncExpr.Args[%d]", i)
 			}
 		}
 		if n.Order != nil {
 			ctx.WritePlain(" ")
-			if err := n.Order.Restore(ctx); err != nil {
+			if err := n.Order.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotate(err, "An error occur while restore AggregateFuncExpr.Args Order")
 			}
 		}
 		ctx.WriteKeyWord(" SEPARATOR ")
-		if err := n.Args[len(n.Args)-1].Restore(ctx); err != nil {
+		if err := n.Args[len(n.Args)-1].Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore AggregateFuncExpr.Args SEPARATOR")
 		}
 	default:
@@ -189,7 +189,7 @@ func (n *AggregateFuncExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, 
 			if i != 0 {
 				ctx.WritePlain(", ")
 			}
-			if err := argv.Restore(ctx); err != nil {
+			if err := argv.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore AggregateFuncExpr.Args[%d]", i)
 			}
 		}
@@ -207,7 +207,7 @@ func (n *WindowFuncExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 		} else if n.Distinct {
 			ctx.WriteKeyWord("DISTINCT ")
 		}
-		if err := v.Restore(ctx); err != nil {
+		if err := v.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore WindowFuncExpr.Args[%d]", i)
 		}
 	}
@@ -219,7 +219,7 @@ func (n *WindowFuncExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 		ctx.WriteKeyWord(" IGNORE NULLS")
 	}
 	ctx.WriteKeyWord(" OVER ")
-	if err := n.Spec.Restore(ctx); err != nil {
+	if err := n.Spec.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore WindowFuncExpr.Spec")
 	}
 
