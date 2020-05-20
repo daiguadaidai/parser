@@ -16,14 +16,11 @@ package ast
 import (
 	"github.com/daiguadaidai/parser/format"
 	"github.com/daiguadaidai/parser/mysql"
+	"github.com/daiguadaidai/parser/utils"
 	"github.com/pingcap/errors"
 )
 
 func (n *Join) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
-	if ctx.JoinLevel != 0 {
-		ctx.WritePlain("(")
-		defer ctx.WritePlain(")")
-	}
 	ctx.JoinLevel++
 	if err := n.Left.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore Join.Left")
@@ -33,13 +30,19 @@ func (n *Join) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) 
 		return nil
 	}
 	if n.NaturalJoin {
-		ctx.WriteKeyWord(" NATURAL")
+		ctx.WritePlain("\n")
+		ctx.WritePlain(utils.GetIndent(level-1, indent, char))
+		ctx.WriteKeyWord("NATURAL")
 	}
 	switch n.Tp {
 	case LeftJoin:
-		ctx.WriteKeyWord(" LEFT")
+		ctx.WritePlain("\n")
+		ctx.WritePlain(utils.GetIndent(level-1, indent, char))
+		ctx.WriteKeyWord("LEFT")
 	case RightJoin:
-		ctx.WriteKeyWord(" RIGHT")
+		ctx.WritePlain("\n")
+		ctx.WritePlain(utils.GetIndent(level-1, indent, char))
+		ctx.WriteKeyWord("RIGHT")
 	}
 	if n.StraightJoin {
 		ctx.WriteKeyWord(" STRAIGHT_JOIN ")
@@ -47,14 +50,15 @@ func (n *Join) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) 
 		ctx.WriteKeyWord(" JOIN ")
 	}
 	ctx.JoinLevel++
-	if err := n.Right.Restore(ctx); err != nil {
+	if err := n.Right.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore Join.Right")
 	}
 	ctx.JoinLevel--
 
 	if n.On != nil {
-		ctx.WritePlain(" ")
-		if err := n.On.Restore(ctx); err != nil {
+		ctx.WritePlain("\n")
+		ctx.WritePlain(utils.GetIndent(level, indent, char))
+		if err := n.On.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore Join.On")
 		}
 	}
@@ -65,7 +69,7 @@ func (n *Join) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) 
 			if i != 0 {
 				ctx.WritePlain(",")
 			}
-			if err := v.Restore(ctx); err != nil {
+			if err := v.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotate(err, "An error occurred while restore Join.Using")
 			}
 		}
@@ -76,9 +80,43 @@ func (n *Join) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) 
 }
 
 func (n *TableName) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
-	n.restoreName(ctx)
-	n.restorePartitions(ctx)
-	return n.restoreIndexHints(ctx)
+	n.prettyName(ctx, level, indent, char)
+	n.prettyPartitions(ctx, level, indent, char)
+	return n.prettyIndexHints(ctx, level, indent, char)
+}
+
+// Restore implements Node interface.
+func (n *TableName) prettyName(ctx *format.RestoreCtx, level, indent int64, char string) {
+	if n.Schema.String() != "" {
+		ctx.WriteName(n.Schema.String())
+		ctx.WritePlain(".")
+	}
+	ctx.WriteName(n.Name.String())
+}
+
+func (n *TableName) prettyPartitions(ctx *format.RestoreCtx, level, indent int64, char string) {
+	if len(n.PartitionNames) > 0 {
+		ctx.WriteKeyWord(" PARTITION")
+		ctx.WritePlain("(")
+		for i, v := range n.PartitionNames {
+			if i != 0 {
+				ctx.WritePlain(", ")
+			}
+			ctx.WriteName(v.String())
+		}
+		ctx.WritePlain(")")
+	}
+}
+
+func (n *TableName) prettyIndexHints(ctx *format.RestoreCtx, level, indent int64, char string) error {
+	for _, value := range n.IndexHints {
+		ctx.WritePlain(" ")
+		if err := value.Pretty(ctx, level, indent, char); err != nil {
+			return errors.Annotate(err, "An error occurred while splicing IndexHints")
+		}
+	}
+
+	return nil
 }
 
 func (n *IndexHint) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
@@ -153,14 +191,14 @@ func (n *TableSource) Pretty(ctx *format.RestoreCtx, level, indent int64, char s
 			ctx.WritePlain("(")
 		}
 
-		tn.restoreName(ctx)
-		tn.restorePartitions(ctx)
+		tn.prettyName(ctx, level, indent, char)
+		tn.prettyPartitions(ctx, level, indent, char)
 
 		if asName := n.AsName.String(); asName != "" {
 			ctx.WriteKeyWord(" AS ")
 			ctx.WriteName(asName)
 		}
-		if err := tn.restoreIndexHints(ctx); err != nil {
+		if err := tn.prettyIndexHints(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore TableSource.Source.(*TableName).IndexHints")
 		}
 
@@ -169,12 +207,14 @@ func (n *TableSource) Pretty(ctx *format.RestoreCtx, level, indent int64, char s
 		}
 	} else {
 		if needParen {
-			ctx.WritePlain("(")
+			ctx.WritePlain("(\n")
 		}
-		if err := n.Source.Restore(ctx); err != nil {
+		if err := n.Source.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore TableSource.Source")
 		}
 		if needParen {
+			ctx.WritePlain("\n")
+			ctx.WritePlain(utils.GetIndent(level-1, indent, char))
 			ctx.WritePlain(")")
 		}
 		if asName := n.AsName.String(); asName != "" {
@@ -201,12 +241,12 @@ func (n *WildCardField) Pretty(ctx *format.RestoreCtx, level, indent int64, char
 
 func (n *SelectField) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if n.WildCard != nil {
-		if err := n.WildCard.Restore(ctx); err != nil {
+		if err := n.WildCard.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore SelectField.WildCard")
 		}
 	}
 	if n.Expr != nil {
-		if err := n.Expr.Restore(ctx); err != nil {
+		if err := n.Expr.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore SelectField.Expr")
 		}
 	}
@@ -222,7 +262,7 @@ func (n *FieldList) Pretty(ctx *format.RestoreCtx, level, indent int64, char str
 		if i != 0 {
 			ctx.WritePlain(", ")
 		}
-		if err := v.Restore(ctx); err != nil {
+		if err := v.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore FieldList.Fields[%d]", i)
 		}
 	}
@@ -230,7 +270,7 @@ func (n *FieldList) Pretty(ctx *format.RestoreCtx, level, indent int64, char str
 }
 
 func (n *TableRefsClause) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
-	if err := n.TableRefs.Restore(ctx); err != nil {
+	if err := n.TableRefs.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore TableRefsClause.TableRefs")
 	}
 	return nil
@@ -281,6 +321,8 @@ func (n *OrderByClause) Pretty(ctx *format.RestoreCtx, level, indent int64, char
 }
 
 func (n *SelectStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
+	level += 1
+	ctx.WritePlain(utils.GetIndent(level-1, indent, char))
 	ctx.WriteKeyWord("SELECT ")
 
 	if n.SelectStmtOpts.Priority > 0 {
@@ -307,13 +349,15 @@ func (n *SelectStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 	if n.TableHints != nil && len(n.TableHints) != 0 {
 		ctx.WritePlain("/*+ ")
 		for i, tableHint := range n.TableHints {
-			if err := tableHint.Restore(ctx); err != nil {
+			if err := tableHint.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore SelectStmt.TableHints[%d]", i)
 			}
 		}
 		ctx.WritePlain("*/ ")
 	}
 
+	ctx.WritePlain("\n")
+	ctx.WritePlain(utils.GetIndent(level, indent, char))
 	if n.Distinct {
 		ctx.WriteKeyWord("DISTINCT ")
 	}
@@ -325,65 +369,79 @@ func (n *SelectStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 			if i != 0 {
 				ctx.WritePlain(",")
 			}
-			if err := field.Restore(ctx); err != nil {
+			if i != 0 && i%5 == 0 && len(n.Fields.Fields) != i {
+				ctx.WritePlain("\n")
+				ctx.WritePlain(utils.GetIndent(level, indent, char))
+			}
+			if err := field.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore SelectStmt.Fields[%d]", i)
 			}
 		}
 	}
 
 	if n.From != nil {
-		ctx.WriteKeyWord(" FROM ")
-		if err := n.From.Restore(ctx); err != nil {
+		ctx.WriteKeyWord("\n")
+		ctx.WritePlain(utils.GetIndent(level-1, indent, char))
+		ctx.WriteKeyWord("FROM ")
+		if err := n.From.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore SelectStmt.From")
 		}
 	}
 
 	if n.From == nil && n.Where != nil {
-		ctx.WriteKeyWord(" FROM DUAL")
+		ctx.WriteKeyWord("FROM DUAL")
 	}
 	if n.Where != nil {
-		ctx.WriteKeyWord(" WHERE ")
-		if err := n.Where.Restore(ctx); err != nil {
+		ctx.WriteKeyWord("\n")
+		ctx.WritePlain(utils.GetIndent(level-1, indent, char))
+		ctx.WriteKeyWord("WHERE ")
+		if err := n.Where.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore SelectStmt.Where")
 		}
 	}
 
 	if n.GroupBy != nil {
-		ctx.WritePlain(" ")
-		if err := n.GroupBy.Restore(ctx); err != nil {
+		ctx.WriteKeyWord("\n")
+		ctx.WritePlain(utils.GetIndent(level-1, indent, char))
+		if err := n.GroupBy.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore SelectStmt.GroupBy")
 		}
 	}
 
 	if n.Having != nil {
-		ctx.WritePlain(" ")
-		if err := n.Having.Restore(ctx); err != nil {
+		ctx.WriteKeyWord("\n")
+		ctx.WritePlain(utils.GetIndent(level-1, indent, char))
+		if err := n.Having.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore SelectStmt.Having")
 		}
 	}
 
 	if n.WindowSpecs != nil {
-		ctx.WriteKeyWord(" WINDOW ")
+		ctx.WriteKeyWord("\n")
+		ctx.WritePlain(utils.GetIndent(level-1, indent, char))
+		ctx.WriteKeyWord("WINDOW ")
 		for i, windowsSpec := range n.WindowSpecs {
 			if i != 0 {
 				ctx.WritePlain(",")
 			}
-			if err := windowsSpec.Restore(ctx); err != nil {
+			if err := windowsSpec.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore SelectStmt.WindowSpec[%d]", i)
 			}
 		}
 	}
 
 	if n.OrderBy != nil {
-		ctx.WritePlain(" ")
-		if err := n.OrderBy.Restore(ctx); err != nil {
+		ctx.WriteKeyWord("\n")
+		ctx.WritePlain(utils.GetIndent(level-1, indent, char))
+		if err := n.OrderBy.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore SelectStmt.OrderBy")
 		}
 	}
 
 	if n.Limit != nil {
-		ctx.WritePlain(" ")
-		if err := n.Limit.Restore(ctx); err != nil {
+		ctx.WriteKeyWord("\n")
+		ctx.WritePlain(utils.GetIndent(level-1, indent, char))
+		if err := n.Limit.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore SelectStmt.Limit")
 		}
 	}
@@ -399,7 +457,7 @@ func (n *SelectStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 
 	if n.SelectIntoOpt != nil {
 		ctx.WritePlain(" ")
-		if err := n.SelectIntoOpt.Restore(ctx); err != nil {
+		if err := n.SelectIntoOpt.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore SelectStmt.SelectIntoOpt")
 		}
 	}
