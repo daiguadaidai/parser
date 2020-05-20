@@ -28,7 +28,7 @@ func (n *AnalyzeTableStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, c
 		if i != 0 {
 			ctx.WritePlain(",")
 		}
-		if err := table.Restore(ctx); err != nil {
+		if err := table.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore AnalyzeTableStmt.TableNames[%d]", i)
 		}
 	}
@@ -67,7 +67,7 @@ func (n *AnalyzeTableStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, c
 
 func (n *DropStatsStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("DROP STATS ")
-	if err := n.Table.Restore(ctx); err != nil {
+	if err := n.Table.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while add table")
 	}
 

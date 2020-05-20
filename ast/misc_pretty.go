@@ -40,7 +40,7 @@ func (n *TraceStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char str
 		ctx.WriteString(n.Format)
 		ctx.WritePlain(" ")
 	}
-	if err := n.Stmt.Restore(ctx); err != nil {
+	if err := n.Stmt.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore TraceStmt.Stmt")
 	}
 	return nil
@@ -61,12 +61,12 @@ func (n *ExplainForStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 func (n *ExplainStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if showStmt, ok := n.Stmt.(*ShowStmt); ok {
 		ctx.WriteKeyWord("DESC ")
-		if err := showStmt.Table.Restore(ctx); err != nil {
+		if err := showStmt.Table.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore ExplainStmt.ShowStmt.Table")
 		}
 		if showStmt.Column != nil {
 			ctx.WritePlain(" ")
-			if err := showStmt.Column.Restore(ctx); err != nil {
+			if err := showStmt.Column.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotate(err, "An error occurred while restore ExplainStmt.ShowStmt.Column")
 			}
 		}
@@ -81,7 +81,7 @@ func (n *ExplainStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char s
 		ctx.WriteString(n.Format)
 		ctx.WritePlain(" ")
 	}
-	if err := n.Stmt.Restore(ctx); err != nil {
+	if err := n.Stmt.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore ExplainStmt.Stmt")
 	}
 	return nil
@@ -96,7 +96,7 @@ func (n *PrepareStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char s
 		return nil
 	}
 	if n.SQLVar != nil {
-		if err := n.SQLVar.Restore(ctx); err != nil {
+		if err := n.SQLVar.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore PrepareStmt.SQLVar")
 		}
 		return nil
@@ -119,7 +119,7 @@ func (n *ExecuteStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char s
 			if i != 0 {
 				ctx.WritePlain(",")
 			}
-			if err := val.Restore(ctx); err != nil {
+			if err := val.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore ExecuteStmt.UsingVars index %d", i)
 			}
 		}
@@ -137,16 +137,16 @@ func (n *BeginStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char str
 					ctx.WriteKeyWord(" WITH TIMESTAMP BOUND STRONG")
 				case TimestampBoundMaxStaleness:
 					ctx.WriteKeyWord(" WITH TIMESTAMP BOUND MAX STALENESS ")
-					return n.Bound.Timestamp.Restore(ctx)
+					return n.Bound.Timestamp.Pretty(ctx, level, indent, char)
 				case TimestampBoundExactStaleness:
 					ctx.WriteKeyWord(" WITH TIMESTAMP BOUND EXACT STALENESS ")
-					return n.Bound.Timestamp.Restore(ctx)
+					return n.Bound.Timestamp.Pretty(ctx, level, indent, char)
 				case TimestampBoundReadTimestamp:
 					ctx.WriteKeyWord(" WITH TIMESTAMP BOUND READ TIMESTAMP ")
-					return n.Bound.Timestamp.Restore(ctx)
+					return n.Bound.Timestamp.Pretty(ctx, level, indent, char)
 				case TimestampBoundMinReadTimestamp:
 					ctx.WriteKeyWord(" WITH TIMESTAMP BOUND MIN READ TIMESTAMP ")
-					return n.Bound.Timestamp.Restore(ctx)
+					return n.Bound.Timestamp.Pretty(ctx, level, indent, char)
 				}
 			}
 		} else {
@@ -179,7 +179,7 @@ func (n CompletionType) Pretty(ctx *format.RestoreCtx, level, indent int64, char
 
 func (n *CommitStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("COMMIT")
-	if err := n.CompletionType.Restore(ctx); err != nil {
+	if err := n.CompletionType.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore CommitStmt.CompletionType")
 	}
 	return nil
@@ -187,7 +187,7 @@ func (n *CommitStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 
 func (n *RollbackStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("ROLLBACK")
-	if err := n.CompletionType.Restore(ctx); err != nil {
+	if err := n.CompletionType.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore RollbackStmt.CompletionType")
 	}
 	return nil
@@ -219,12 +219,12 @@ func (n *VariableAssignment) Pretty(ctx *format.RestoreCtx, level, indent int64,
 		ctx.WriteName(n.Name)
 		ctx.WritePlain("=")
 	}
-	if err := n.Value.Restore(ctx); err != nil {
+	if err := n.Value.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore VariableAssignment.Value")
 	}
 	if n.ExtendValue != nil {
 		ctx.WriteKeyWord(" COLLATE ")
-		if err := n.ExtendValue.Restore(ctx); err != nil {
+		if err := n.ExtendValue.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore VariableAssignment.ExtendValue")
 		}
 	}
@@ -245,7 +245,7 @@ func (n *FlushStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char str
 			} else {
 				ctx.WritePlain(", ")
 			}
-			if err := v.Restore(ctx); err != nil {
+			if err := v.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore FlushStmt.Tables[%d]", i)
 			}
 		}
@@ -309,7 +309,7 @@ func (n *SetStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char strin
 		if i != 0 {
 			ctx.WritePlain(", ")
 		}
-		if err := v.Restore(ctx); err != nil {
+		if err := v.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore SetStmt.Variables[%d]", i)
 		}
 	}
@@ -326,14 +326,14 @@ func (n *SetConfigStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char
 	ctx.WritePlain(" ")
 	ctx.WriteKeyWord(n.Name)
 	ctx.WritePlain(" = ")
-	return n.Value.Restore(ctx)
+	return n.Value.Pretty(ctx, level, indent, char)
 }
 
 func (n *SetPwdStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("SET PASSWORD")
 	if n.User != nil {
 		ctx.WriteKeyWord(" FOR ")
-		if err := n.User.Restore(ctx); err != nil {
+		if err := n.User.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore SetPwdStmt.User")
 		}
 	}
@@ -367,7 +367,7 @@ func (n *SetRoleStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char s
 	}
 	for i, role := range n.RoleList {
 		ctx.WritePlain(" ")
-		err := role.Restore(ctx)
+		err := role.Pretty(ctx, level, indent, char)
 		if err != nil {
 			return errors.Annotate(err, "An error occurred while restore SetRoleStmt.RoleList")
 		}
@@ -389,7 +389,7 @@ func (n *SetDefaultRoleStmt) Pretty(ctx *format.RestoreCtx, level, indent int64,
 	}
 	for i, role := range n.RoleList {
 		ctx.WritePlain(" ")
-		err := role.Restore(ctx)
+		err := role.Pretty(ctx, level, indent, char)
 		if err != nil {
 			return errors.Annotate(err, "An error occurred while restore SetDefaultRoleStmt.RoleList")
 		}
@@ -400,7 +400,7 @@ func (n *SetDefaultRoleStmt) Pretty(ctx *format.RestoreCtx, level, indent int64,
 	ctx.WritePlain(" TO")
 	for i, user := range n.UserList {
 		ctx.WritePlain(" ")
-		err := user.Restore(ctx)
+		err := user.Pretty(ctx, indent, indent, char)
 		if err != nil {
 			return errors.Annotate(err, "An error occurred while restore SetDefaultRoleStmt.UserList")
 		}
@@ -412,12 +412,12 @@ func (n *SetDefaultRoleStmt) Pretty(ctx *format.RestoreCtx, level, indent int64,
 }
 
 func (n *UserSpec) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
-	if err := n.User.Restore(ctx); err != nil {
+	if err := n.User.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore UserSpec.User")
 	}
 	if n.AuthOpt != nil {
 		ctx.WritePlain(" ")
-		if err := n.AuthOpt.Restore(ctx); err != nil {
+		if err := n.AuthOpt.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore UserSpec.AuthOpt")
 		}
 	}
@@ -499,7 +499,7 @@ func (n *CreateUserStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 		if i != 0 {
 			ctx.WritePlain(", ")
 		}
-		if err := v.Restore(ctx); err != nil {
+		if err := v.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore CreateUserStmt.Specs[%d]", i)
 		}
 	}
@@ -512,7 +512,7 @@ func (n *CreateUserStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 		if i != 0 {
 			ctx.WriteKeyWord(" AND ")
 		}
-		if err := option.Restore(ctx); err != nil {
+		if err := option.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore CreateUserStmt.TLSOptions[%d]", i)
 		}
 	}
@@ -523,14 +523,14 @@ func (n *CreateUserStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 
 	for i, v := range n.ResourceOptions {
 		ctx.WritePlain(" ")
-		if err := v.Restore(ctx); err != nil {
+		if err := v.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore CreateUserStmt.ResourceOptions[%d]", i)
 		}
 	}
 
 	for i, v := range n.PasswordOrLockOptions {
 		ctx.WritePlain(" ")
-		if err := v.Restore(ctx); err != nil {
+		if err := v.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore CreateUserStmt.PasswordOrLockOptions[%d]", i)
 		}
 	}
@@ -545,7 +545,7 @@ func (n *AlterUserStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char
 	if n.CurrentAuth != nil {
 		ctx.WriteKeyWord("USER")
 		ctx.WritePlain("() ")
-		if err := n.CurrentAuth.Restore(ctx); err != nil {
+		if err := n.CurrentAuth.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore AlterUserStmt.CurrentAuth")
 		}
 	}
@@ -553,7 +553,7 @@ func (n *AlterUserStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char
 		if i != 0 {
 			ctx.WritePlain(", ")
 		}
-		if err := v.Restore(ctx); err != nil {
+		if err := v.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore AlterUserStmt.Specs[%d]", i)
 		}
 	}
@@ -566,7 +566,7 @@ func (n *AlterUserStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char
 		if i != 0 {
 			ctx.WriteKeyWord(" AND ")
 		}
-		if err := option.Restore(ctx); err != nil {
+		if err := option.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore AlterUserStmt.TLSOptions[%d]", i)
 		}
 	}
@@ -577,14 +577,14 @@ func (n *AlterUserStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char
 
 	for i, v := range n.ResourceOptions {
 		ctx.WritePlain(" ")
-		if err := v.Restore(ctx); err != nil {
+		if err := v.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore AlterUserStmt.ResourceOptions[%d]", i)
 		}
 	}
 
 	for i, v := range n.PasswordOrLockOptions {
 		ctx.WritePlain(" ")
-		if err := v.Restore(ctx); err != nil {
+		if err := v.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore AlterUserStmt.PasswordOrLockOptions[%d]", i)
 		}
 	}
@@ -615,7 +615,7 @@ func (n *DropUserStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char 
 		if i != 0 {
 			ctx.WritePlain(", ")
 		}
-		if err := v.Restore(ctx); err != nil {
+		if err := v.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore DropUserStmt.UserList[%d]", i)
 		}
 	}
@@ -630,11 +630,11 @@ func (n *CreateBindingStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, 
 		ctx.WriteKeyWord("SESSION ")
 	}
 	ctx.WriteKeyWord("BINDING FOR ")
-	if err := n.OriginSel.Restore(ctx); err != nil {
+	if err := n.OriginSel.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Trace(err)
 	}
 	ctx.WriteKeyWord(" USING ")
-	if err := n.HintedSel.Restore(ctx); err != nil {
+	if err := n.HintedSel.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Trace(err)
 	}
 	return nil
@@ -648,12 +648,12 @@ func (n *DropBindingStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, ch
 		ctx.WriteKeyWord("SESSION ")
 	}
 	ctx.WriteKeyWord("BINDING FOR ")
-	if err := n.OriginSel.Restore(ctx); err != nil {
+	if err := n.OriginSel.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Trace(err)
 	}
 	if n.HintedSel != nil {
 		ctx.WriteKeyWord(" USING ")
-		if err := n.HintedSel.Restore(ctx); err != nil {
+		if err := n.HintedSel.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Trace(err)
 		}
 	}
@@ -666,7 +666,7 @@ func (n *DoStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string
 		if i != 0 {
 			ctx.WritePlain(", ")
 		}
-		if err := v.Restore(ctx); err != nil {
+		if err := v.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore DoStmt.Exprs[%d]", i)
 		}
 	}
@@ -702,7 +702,7 @@ func (n *AdminStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char str
 			if i != 0 {
 				ctx.WritePlain(", ")
 			}
-			if err := v.Restore(ctx); err != nil {
+			if err := v.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore AdminStmt.Tables[%d]", i)
 			}
 		}
@@ -728,7 +728,7 @@ func (n *AdminStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char str
 		}
 		if n.Where != nil {
 			ctx.WriteKeyWord(" WHERE ")
-			if err := n.Where.Restore(ctx); err != nil {
+			if err := n.Where.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotate(err, "An error occurred while restore ShowStmt.Where")
 			}
 		}
@@ -789,7 +789,7 @@ func (n *AdminStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char str
 		restoreJobIDs()
 	case AdminShowSlow:
 		ctx.WriteKeyWord("SHOW SLOW ")
-		if err := n.ShowSlow.Restore(ctx); err != nil {
+		if err := n.ShowSlow.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore AdminStmt.ShowSlow")
 		}
 	case AdminReloadExprPushdownBlacklist:
@@ -849,7 +849,7 @@ func (n *PrivElem) Pretty(ctx *format.RestoreCtx, level, indent int64, char stri
 			if i != 0 {
 				ctx.WritePlain(",")
 			}
-			if err := v.Restore(ctx); err != nil {
+			if err := v.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore PrivElem.Cols[%d]", i)
 			}
 		}
@@ -897,18 +897,18 @@ func (n *RevokeStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 		if i != 0 {
 			ctx.WritePlain(", ")
 		}
-		if err := v.Restore(ctx); err != nil {
+		if err := v.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore RevokeStmt.Privs[%d]", i)
 		}
 	}
 	ctx.WriteKeyWord(" ON ")
 	if n.ObjectType != ObjectTypeNone {
-		if err := n.ObjectType.Restore(ctx); err != nil {
+		if err := n.ObjectType.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore RevokeStmt.ObjectType")
 		}
 		ctx.WritePlain(" ")
 	}
-	if err := n.Level.Restore(ctx); err != nil {
+	if err := n.Level.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore RevokeStmt.Level")
 	}
 	ctx.WriteKeyWord(" FROM ")
@@ -916,7 +916,7 @@ func (n *RevokeStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 		if i != 0 {
 			ctx.WritePlain(", ")
 		}
-		if err := v.Restore(ctx); err != nil {
+		if err := v.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore RevokeStmt.Users[%d]", i)
 		}
 	}
@@ -929,7 +929,7 @@ func (n *RevokeRoleStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 		if i != 0 {
 			ctx.WritePlain(", ")
 		}
-		if err := role.Restore(ctx); err != nil {
+		if err := role.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore RevokeRoleStmt.Roles[%d]", i)
 		}
 	}
@@ -938,7 +938,7 @@ func (n *RevokeRoleStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 		if i != 0 {
 			ctx.WritePlain(", ")
 		}
-		if err := v.Restore(ctx); err != nil {
+		if err := v.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore RevokeRoleStmt.Users[%d]", i)
 		}
 	}
@@ -953,18 +953,18 @@ func (n *GrantStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char str
 		} else if v.Priv == 0 {
 			ctx.WritePlain(" ")
 		}
-		if err := v.Restore(ctx); err != nil {
+		if err := v.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore GrantStmt.Privs[%d]", i)
 		}
 	}
 	ctx.WriteKeyWord(" ON ")
 	if n.ObjectType != ObjectTypeNone {
-		if err := n.ObjectType.Restore(ctx); err != nil {
+		if err := n.ObjectType.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore GrantStmt.ObjectType")
 		}
 		ctx.WritePlain(" ")
 	}
-	if err := n.Level.Restore(ctx); err != nil {
+	if err := n.Level.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore GrantStmt.Level")
 	}
 	ctx.WriteKeyWord(" TO ")
@@ -972,7 +972,7 @@ func (n *GrantStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char str
 		if i != 0 {
 			ctx.WritePlain(", ")
 		}
-		if err := v.Restore(ctx); err != nil {
+		if err := v.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore GrantStmt.Users[%d]", i)
 		}
 	}
@@ -984,7 +984,7 @@ func (n *GrantStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char str
 			if i != 0 {
 				ctx.WriteKeyWord(" AND ")
 			}
-			if err := option.Restore(ctx); err != nil {
+			if err := option.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore GrantStmt.TLSOptions[%d]", i)
 			}
 		}
@@ -1002,7 +1002,7 @@ func (n *GrantRoleStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char
 			if i != 0 {
 				ctx.WritePlain(", ")
 			}
-			if err := role.Restore(ctx); err != nil {
+			if err := role.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore GrantRoleStmt.Roles[%d]", i)
 			}
 		}
@@ -1012,7 +1012,7 @@ func (n *GrantRoleStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char
 		if i != 0 {
 			ctx.WritePlain(", ")
 		}
-		if err := v.Restore(ctx); err != nil {
+		if err := v.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore GrantStmt.Users[%d]", i)
 		}
 	}
@@ -1034,7 +1034,7 @@ func (n *BRIEStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char stri
 			if index != 0 {
 				ctx.WritePlain(", ")
 			}
-			if err := table.Restore(ctx); err != nil {
+			if err := table.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore BRIEStmt.Tables[%d]", index)
 			}
 		}
@@ -1127,10 +1127,10 @@ func (n *TableOptimizerHint) Pretty(ctx *format.RestoreCtx, level, indent int64,
 			if i != 0 {
 				ctx.WritePlain(", ")
 			}
-			table.Restore(ctx)
+			table.Pretty(ctx, level, indent, char)
 		}
 	case "use_index", "ignore_index", "use_index_merge":
-		n.Tables[0].Restore(ctx)
+		n.Tables[0].Pretty(ctx, level, indent, char)
 		ctx.WritePlain(" ")
 		for i, index := range n.Indexes {
 			if i != 0 {
@@ -1154,7 +1154,7 @@ func (n *TableOptimizerHint) Pretty(ctx *format.RestoreCtx, level, indent int64,
 			if i == 0 {
 				ctx.WritePlain("[")
 			}
-			table.Restore(ctx)
+			table.Pretty(ctx, level, indent, char)
 			if i == len(n.Tables)-1 {
 				ctx.WritePlain("]")
 			} else {
