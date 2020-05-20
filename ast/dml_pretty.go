@@ -164,7 +164,7 @@ func (n *DeleteTableList) Pretty(ctx *format.RestoreCtx, level, indent int64, ch
 		if i != 0 {
 			ctx.WritePlain(",")
 		}
-		if err := t.Restore(ctx); err != nil {
+		if err := t.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore DeleteTableList.Tables[%v]", i)
 		}
 	}
@@ -467,15 +467,17 @@ func (n *SelectStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 func (n *UnionSelectList) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	for i, selectStmt := range n.Selects {
 		if i != 0 {
-			ctx.WriteKeyWord(" UNION ")
+			ctx.WriteKeyWord("\n")
+			ctx.WriteKeyWord("UNION ")
 			if !selectStmt.IsAfterUnionDistinct {
 				ctx.WriteKeyWord("ALL ")
 			}
+			ctx.WriteKeyWord("\n")
 		}
 		if selectStmt.IsInBraces {
 			ctx.WritePlain("(")
 		}
-		if err := selectStmt.Restore(ctx); err != nil {
+		if err := selectStmt.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore UnionSelectList.SelectStmt")
 		}
 		if selectStmt.IsInBraces {
@@ -486,20 +488,20 @@ func (n *UnionSelectList) Pretty(ctx *format.RestoreCtx, level, indent int64, ch
 }
 
 func (n *UnionStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
-	if err := n.SelectList.Restore(ctx); err != nil {
+	if err := n.SelectList.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore UnionStmt.SelectList")
 	}
 
 	if n.OrderBy != nil {
 		ctx.WritePlain(" ")
-		if err := n.OrderBy.Restore(ctx); err != nil {
+		if err := n.OrderBy.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore UnionStmt.OrderBy")
 		}
 	}
 
 	if n.Limit != nil {
 		ctx.WritePlain(" ")
-		if err := n.Limit.Restore(ctx); err != nil {
+		if err := n.Limit.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore UnionStmt.Limit")
 		}
 	}
@@ -507,11 +509,11 @@ func (n *UnionStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char str
 }
 
 func (n *Assignment) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
-	if err := n.Column.Restore(ctx); err != nil {
+	if err := n.Column.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore Assignment.Column")
 	}
 	ctx.WritePlain("=")
-	if err := n.Expr.Restore(ctx); err != nil {
+	if err := n.Expr.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore Assignment.Expr")
 	}
 	return nil
@@ -530,11 +532,11 @@ func (n *LoadDataStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char 
 		ctx.WriteKeyWord(" IGNORE")
 	}
 	ctx.WriteKeyWord(" INTO TABLE ")
-	if err := n.Table.Restore(ctx); err != nil {
+	if err := n.Table.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore LoadDataStmt.Table")
 	}
-	n.FieldsInfo.Restore(ctx)
-	n.LinesInfo.Restore(ctx)
+	n.FieldsInfo.Pretty(ctx, level, indent, char)
+	n.LinesInfo.Pretty(ctx, level, indent, char)
 	if n.IgnoreLines != 0 {
 		ctx.WriteKeyWord(" IGNORE ")
 		ctx.WritePlainf("%d", n.IgnoreLines)
@@ -547,12 +549,12 @@ func (n *LoadDataStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char 
 				ctx.WritePlain(",")
 			}
 			if c.ColumnName != nil {
-				if err := c.ColumnName.Restore(ctx); err != nil {
+				if err := c.ColumnName.Pretty(ctx, level, indent, char); err != nil {
 					return errors.Annotate(err, "An error occurred while restore LoadDataStmt.ColumnsAndUserVars")
 				}
 			}
 			if c.UserVar != nil {
-				if err := c.UserVar.Restore(ctx); err != nil {
+				if err := c.UserVar.Pretty(ctx, level, indent, char); err != nil {
 					return errors.Annotate(err, "An error occurred while restore LoadDataStmt.ColumnsAndUserVars")
 				}
 			}
@@ -568,7 +570,7 @@ func (n *LoadDataStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char 
 				ctx.WritePlain(",")
 			}
 			ctx.WritePlain(" ")
-			if err := assign.Restore(ctx); err != nil {
+			if err := assign.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotate(err, "An error occurred while restore LoadDataStmt.ColumnAssignments")
 			}
 		}
@@ -627,7 +629,7 @@ func (n *InsertStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 	if n.TableHints != nil && len(n.TableHints) != 0 {
 		ctx.WritePlain("/*+ ")
 		for i, tableHint := range n.TableHints {
-			if err := tableHint.Restore(ctx); err != nil {
+			if err := tableHint.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore InsertStmt.TableHints[%d]", i)
 			}
 		}
@@ -664,24 +666,24 @@ func (n *InsertStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 			if i != 0 {
 				ctx.WritePlain(",")
 			}
-			if err := v.Restore(ctx); err != nil {
+			if err := v.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore InsertStmt.Columns[%d]", i)
 			}
 		}
 		ctx.WritePlain(")")
 	}
 	if n.Lists != nil {
-		ctx.WriteKeyWord(" VALUES ")
+		ctx.WriteKeyWord(" VALUES\n")
 		for i, row := range n.Lists {
 			if i != 0 {
-				ctx.WritePlain(",")
+				ctx.WritePlain(",\n")
 			}
 			ctx.WritePlain("(")
 			for j, v := range row {
 				if j != 0 {
 					ctx.WritePlain(",")
 				}
-				if err := v.Restore(ctx); err != nil {
+				if err := v.Pretty(ctx, level, indent, char); err != nil {
 					return errors.Annotatef(err, "An error occurred while restore InsertStmt.Lists[%d][%d]", i, j)
 				}
 			}
@@ -689,10 +691,10 @@ func (n *InsertStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 		}
 	}
 	if n.Select != nil {
-		ctx.WritePlain(" ")
+		ctx.WritePlain("\n")
 		switch v := n.Select.(type) {
 		case *SelectStmt, *UnionStmt:
-			if err := v.Restore(ctx); err != nil {
+			if err := v.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotate(err, "An error occurred while restore InsertStmt.Select")
 			}
 		default:
@@ -700,12 +702,13 @@ func (n *InsertStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 		}
 	}
 	if n.Setlist != nil {
-		ctx.WriteKeyWord(" SET ")
+		ctx.WriteKeyWord("\nSET\n")
 		for i, v := range n.Setlist {
 			if i != 0 {
-				ctx.WritePlain(",")
+				ctx.WritePlain(",\n")
 			}
-			if err := v.Restore(ctx); err != nil {
+			ctx.WritePlain(utils.GetIndent(level+1, indent, char))
+			if err := v.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore InsertStmt.Setlist[%d]", i)
 			}
 		}
@@ -714,9 +717,9 @@ func (n *InsertStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 		ctx.WriteKeyWord(" ON DUPLICATE KEY UPDATE ")
 		for i, v := range n.OnDuplicate {
 			if i != 0 {
-				ctx.WritePlain(",")
+				ctx.WritePlain(",\n")
 			}
-			if err := v.Restore(ctx); err != nil {
+			if err := v.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore InsertStmt.OnDuplicate[%d]", i)
 			}
 		}
@@ -726,6 +729,7 @@ func (n *InsertStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 }
 
 func (n *DeleteStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
+	level += 1
 	ctx.WriteKeyWord("DELETE ")
 
 	if n.TableHints != nil && len(n.TableHints) != 0 {
@@ -753,49 +757,50 @@ func (n *DeleteStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 
 	if n.IsMultiTable { // Multiple-Table Syntax
 		if n.BeforeFrom {
-			if err := n.Tables.Restore(ctx); err != nil {
+			if err := n.Tables.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotate(err, "An error occurred while restore DeleteStmt.Tables")
 			}
 
 			ctx.WriteKeyWord(" FROM ")
-			if err := n.TableRefs.Restore(ctx); err != nil {
+			if err := n.TableRefs.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotate(err, "An error occurred while restore DeleteStmt.TableRefs")
 			}
 		} else {
 			ctx.WriteKeyWord("FROM ")
-			if err := n.Tables.Restore(ctx); err != nil {
+			if err := n.Tables.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotate(err, "An error occurred while restore DeleteStmt.Tables")
 			}
 
 			ctx.WriteKeyWord(" USING ")
-			if err := n.TableRefs.Restore(ctx); err != nil {
+			if err := n.TableRefs.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotate(err, "An error occurred while restore DeleteStmt.TableRefs")
 			}
 		}
 	} else { // Single-Table Syntax
 		ctx.WriteKeyWord("FROM ")
 
-		if err := n.TableRefs.Restore(ctx); err != nil {
+		if err := n.TableRefs.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore DeleteStmt.TableRefs")
 		}
 	}
 
 	if n.Where != nil {
-		ctx.WriteKeyWord(" WHERE ")
-		if err := n.Where.Restore(ctx); err != nil {
+		ctx.WriteKeyWord("\n")
+		ctx.WriteKeyWord("WHERE ")
+		if err := n.Where.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore DeleteStmt.Where")
 		}
 	}
 
 	if n.Order != nil {
-		ctx.WritePlain(" ")
+		ctx.WritePlain("\n")
 		if err := n.Order.Restore(ctx); err != nil {
 			return errors.Annotate(err, "An error occurred while restore DeleteStmt.Order")
 		}
 	}
 
 	if n.Limit != nil {
-		ctx.WritePlain(" ")
+		ctx.WritePlain("\n")
 		if err := n.Limit.Restore(ctx); err != nil {
 			return errors.Annotate(err, "An error occurred while restore DeleteStmt.Limit")
 		}

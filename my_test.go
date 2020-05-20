@@ -319,3 +319,202 @@ LIMIT 1,100
 	fmt.Println("Pretty 语句:")
 	fmt.Println(sb2.String())
 }
+func Test_Pretty_Select_Union_01(t *testing.T) {
+	query := `
+SELECT DISTINCT id1, id2, id3, (
+        SELECT * FROM t1 WHERE id = 1
+    ), id5, id6, id7
+FROM (
+	SELECT * FROM (
+        SELECT * FROM t2
+        LEFT JOIN t1
+            ON t2.id = t1.id
+        WHERE id = 1
+            AND id IN(1,2,4,5,6,7)
+            AND (time BETWEEN 'A' AND 'Z'
+            OR time BETWEEN 'a' AND 'z')
+            AND id = 1
+            AND id IN(
+                SELECT * FROM t1 where name = 'a'
+            )
+        GROUP BY id
+        ORDER BY id DESC, name ASC
+        LIMIT 100
+    ) AS tmp2
+) as tmp1
+LEFT JOIN t2
+    ON t1.a = t2.a
+LEFT JOIN t3
+    ON t2.a = t3.a
+LEFT JOIN t4
+    ON t3.a = t4.a
+WHERE id = 1
+GROUP BY id
+ORDER BY id DESC, name ASC
+LIMIT 1,100
+UNION ALL
+SELECT DISTINCT id1, id2, id3, (
+        SELECT * FROM t1 WHERE id = 1
+    ), id5, id6, id7
+FROM (
+	SELECT * FROM (
+        SELECT * FROM t2
+        LEFT JOIN t1
+            ON t2.id = t1.id
+        WHERE id = 1
+            AND id IN(1,2,4,5,6,7)
+            AND (time BETWEEN 'A' AND 'Z'
+            OR time BETWEEN 'a' AND 'z')
+            AND id = 1
+            AND id IN(
+                SELECT * FROM t1 where name = 'a'
+            )
+        GROUP BY id
+        ORDER BY id DESC, name ASC
+        LIMIT 100
+    ) AS tmp2
+) as tmp1
+LEFT JOIN t2
+    ON t1.a = t2.a
+LEFT JOIN t3
+    ON t2.a = t3.a
+LEFT JOIN t4
+    ON t3.a = t4.a
+WHERE id = 1
+GROUP BY id
+ORDER BY id DESC, name ASC
+LIMIT 1,100
+`
+	ps := New()
+	stmt, err := ps.ParseOneStmt(query, "", "")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	fmt.Println(stmt.Text())
+
+	var sb1 strings.Builder
+	if err = stmt.Restore(format1.NewRestoreCtx(format1.DefaultRestoreFlags, &sb1)); err != nil {
+		t.Fatalf("Restore 出错. %s", err.Error())
+	}
+	fmt.Println("Restore 语句:", sb1.String())
+
+	var sb2 strings.Builder
+	if err = stmt.Pretty(format1.NewRestoreCtx(format1.DefaultRestoreFlags, &sb2), 0, 4, " "); err != nil {
+		t.Fatalf("Pretty 出错. %s", err.Error())
+	}
+
+	fmt.Println("Pretty 语句:")
+	fmt.Println(sb2.String())
+}
+
+func Test_Pretty_InsertIntoValues(t *testing.T) {
+	query := `
+INSERT INTO t1 VALUES(1),(1),(1),(1),(1),(1),(1);
+`
+	ps := New()
+	stmt, err := ps.ParseOneStmt(query, "", "")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	fmt.Println(stmt.Text())
+
+	var sb1 strings.Builder
+	if err = stmt.Restore(format1.NewRestoreCtx(format1.DefaultRestoreFlags, &sb1)); err != nil {
+		t.Fatalf("Restore 出错. %s", err.Error())
+	}
+	fmt.Println("Restore 语句:", sb1.String())
+
+	var sb2 strings.Builder
+	if err = stmt.Pretty(format1.NewRestoreCtx(format1.DefaultRestoreFlags, &sb2), 0, 4, " "); err != nil {
+		t.Fatalf("Pretty 出错. %s", err.Error())
+	}
+
+	fmt.Println("Pretty 语句:")
+	fmt.Println(sb2.String())
+}
+
+func Test_Pretty_InsertSelect(t *testing.T) {
+	query := `
+INSERT INTO t1 SELECT * FROM t
+`
+	ps := New()
+	stmt, err := ps.ParseOneStmt(query, "", "")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	fmt.Println(stmt.Text())
+
+	var sb1 strings.Builder
+	if err = stmt.Restore(format1.NewRestoreCtx(format1.DefaultRestoreFlags, &sb1)); err != nil {
+		t.Fatalf("Restore 出错. %s", err.Error())
+	}
+	fmt.Println("Restore 语句:", sb1.String())
+
+	var sb2 strings.Builder
+	if err = stmt.Pretty(format1.NewRestoreCtx(format1.DefaultRestoreFlags, &sb2), 0, 4, " "); err != nil {
+		t.Fatalf("Pretty 出错. %s", err.Error())
+	}
+
+	fmt.Println("Pretty 语句:")
+	fmt.Println(sb2.String())
+}
+
+func Test_Pretty_InsertSet(t *testing.T) {
+	query := `
+insert into t set field1 = 'value1',field2 = 'value2'
+`
+	ps := New()
+	stmt, err := ps.ParseOneStmt(query, "", "")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	fmt.Println(stmt.Text())
+
+	var sb1 strings.Builder
+	if err = stmt.Restore(format1.NewRestoreCtx(format1.DefaultRestoreFlags, &sb1)); err != nil {
+		t.Fatalf("Restore 出错. %s", err.Error())
+	}
+	fmt.Println("Restore 语句:", sb1.String())
+
+	var sb2 strings.Builder
+	if err = stmt.Pretty(format1.NewRestoreCtx(format1.DefaultRestoreFlags, &sb2), 0, 4, " "); err != nil {
+		t.Fatalf("Pretty 出错. %s", err.Error())
+	}
+
+	fmt.Println("Pretty 语句:")
+	fmt.Println(sb2.String())
+}
+
+func Test_Pretty_Delete(t *testing.T) {
+	query := `
+DELETE t1, t2 FROM t
+LEFT JOIN t1
+    ON t.a = t1.a
+WHERE id = 1
+`
+	ps := New()
+	stmt, err := ps.ParseOneStmt(query, "", "")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	fmt.Println(stmt.Text())
+
+	var sb1 strings.Builder
+	if err = stmt.Restore(format1.NewRestoreCtx(format1.DefaultRestoreFlags, &sb1)); err != nil {
+		t.Fatalf("Restore 出错. %s", err.Error())
+	}
+	fmt.Println("Restore 语句:", sb1.String())
+
+	var sb2 strings.Builder
+	if err = stmt.Pretty(format1.NewRestoreCtx(format1.DefaultRestoreFlags, &sb2), 0, 4, " "); err != nil {
+		t.Fatalf("Pretty 出错. %s", err.Error())
+	}
+
+	fmt.Println("Pretty 语句:")
+	fmt.Println(sb2.String())
+}
