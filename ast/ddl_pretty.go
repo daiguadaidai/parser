@@ -85,7 +85,7 @@ func (n *DropDatabaseStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, c
 func (n *IndexPartSpecification) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if n.Expr != nil {
 		ctx.WritePlain("(")
-		if err := n.Expr.Pretty(ctx, level, indent, char); err != nil {
+		if err := n.Expr.Pretty(ctx, level+1, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while splicing IndexPartSpecifications")
 		}
 		ctx.WritePlain(")")
@@ -114,7 +114,7 @@ func (n *ReferenceDef) Pretty(ctx *format.RestoreCtx, level, indent int64, char 
 			if i > 0 {
 				ctx.WritePlain(", ")
 			}
-			if err := indexColNames.Pretty(ctx, level, indent, char); err != nil {
+			if err := indexColNames.Pretty(ctx, level+1, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while splicing IndexPartSpecifications: [%v]", i)
 			}
 		}
@@ -197,7 +197,7 @@ func (n *ColumnOption) Pretty(ctx *format.RestoreCtx, level, indent int64, char 
 	case ColumnOptionGenerated:
 		ctx.WriteKeyWord("GENERATED ALWAYS AS")
 		ctx.WritePlain("(")
-		if err := n.Expr.Pretty(ctx, level, indent, char); err != nil {
+		if err := n.Expr.Pretty(ctx, level+1, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while splicing ColumnOption GENERATED ALWAYS Expr")
 		}
 		ctx.WritePlain(")")
@@ -219,7 +219,7 @@ func (n *ColumnOption) Pretty(ctx *format.RestoreCtx, level, indent int64, char 
 	case ColumnOptionCheck:
 		ctx.WriteKeyWord("CHECK")
 		ctx.WritePlain("(")
-		if err := n.Expr.Pretty(ctx, level, indent, char); err != nil {
+		if err := n.Expr.Pretty(ctx, level+1, indent, char); err != nil {
 			return errors.Trace(err)
 		}
 		ctx.WritePlain(")")
@@ -326,7 +326,7 @@ func (n *Constraint) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 		}
 		ctx.WriteKeyWord("CHECK")
 		ctx.WritePlain("(")
-		if err := n.Expr.Restore(ctx); err != nil {
+		if err := n.Expr.Pretty(ctx, level+1, indent, char); err != nil {
 			return errors.Trace(err)
 		}
 		ctx.WritePlain(") ")
@@ -358,7 +358,7 @@ func (n *Constraint) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 		if i > 0 {
 			ctx.WritePlain(", ")
 		}
-		if err := keys.Pretty(ctx, level, indent, char); err != nil {
+		if err := keys.Pretty(ctx, level+1, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while splicing Constraint Keys: [%v]", i)
 		}
 	}
@@ -425,11 +425,11 @@ func (n *CreateTableStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, ch
 	if lenCols+lenConstraints > 0 {
 		ctx.WritePlain("(\n")
 		for i, col := range n.Cols {
-			ctx.WritePlain(utils.GetIndent(level, indent, " "))
 			if i > 0 {
 				ctx.WritePlain(",\n")
 			}
-			if err := col.Pretty(ctx, level, indent, char); err != nil {
+			ctx.WritePlain(utils.GetIndent(level, indent, char))
+			if err := col.Pretty(ctx, level+1, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while splicing CreateTableStmt ColumnDef: [%v]", i)
 			}
 		}
@@ -437,7 +437,8 @@ func (n *CreateTableStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, ch
 			if i > 0 || lenCols >= 1 {
 				ctx.WritePlain(",\n")
 			}
-			if err := constraint.Pretty(ctx, level, indent, char); err != nil {
+			ctx.WritePlain(utils.GetIndent(level, indent, char))
+			if err := constraint.Pretty(ctx, level+1, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while splicing CreateTableStmt Constraints: [%v]", i)
 			}
 		}
@@ -446,14 +447,14 @@ func (n *CreateTableStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, ch
 
 	for i, option := range n.Options {
 		ctx.WritePlain(" ")
-		if err := option.Restore(ctx); err != nil {
+		if err := option.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while splicing CreateTableStmt TableOption: [%v]", i)
 		}
 	}
 
 	if n.Partition != nil {
-		ctx.WritePlain(" ")
-		if err := n.Partition.Restore(ctx); err != nil {
+		ctx.WritePlain("\n")
+		if err := n.Partition.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while splicing CreateTableStmt Partition")
 		}
 	}
@@ -461,14 +462,14 @@ func (n *CreateTableStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, ch
 	if n.Select != nil {
 		switch n.OnDuplicate {
 		case OnDuplicateKeyHandlingError:
-			ctx.WriteKeyWord(" AS ")
+			ctx.WriteKeyWord(" AS\n")
 		case OnDuplicateKeyHandlingIgnore:
-			ctx.WriteKeyWord(" IGNORE AS ")
+			ctx.WriteKeyWord(" IGNORE AS\n")
 		case OnDuplicateKeyHandlingReplace:
-			ctx.WriteKeyWord(" REPLACE AS ")
+			ctx.WriteKeyWord(" REPLACE AS\n")
 		}
 
-		if err := n.Select.Restore(ctx); err != nil {
+		if err := n.Select.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while splicing CreateTableStmt Select")
 		}
 	}
@@ -494,7 +495,7 @@ func (n *DropTableStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char
 		if index != 0 {
 			ctx.WritePlain(", ")
 		}
-		if err := table.Restore(ctx); err != nil {
+		if err := table.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore DropTableStmt.Tables "+string(index))
 		}
 	}
@@ -511,7 +512,7 @@ func (n *DropSequenceStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, c
 		if i != 0 {
 			ctx.WritePlain(", ")
 		}
-		if err := sequence.Restore(ctx); err != nil {
+		if err := sequence.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore DropSequenceStmt.Sequences[%d]", i)
 		}
 	}
@@ -523,9 +524,10 @@ func (n *RenameTableStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, ch
 	ctx.WriteKeyWord("RENAME TABLE ")
 	for index, table2table := range n.TableToTables {
 		if index != 0 {
-			ctx.WritePlain(", ")
+			ctx.WritePlain(",\n")
+			ctx.WritePlain(utils.GetIndent(level, indent, char))
 		}
-		if err := table2table.Restore(ctx); err != nil {
+		if err := table2table.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore RenameTableStmt.TableToTables")
 		}
 	}
@@ -533,11 +535,11 @@ func (n *RenameTableStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, ch
 }
 
 func (n *TableToTable) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
-	if err := n.OldTable.Restore(ctx); err != nil {
+	if err := n.OldTable.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore TableToTable.OldTable")
 	}
 	ctx.WriteKeyWord(" TO ")
-	if err := n.NewTable.Restore(ctx); err != nil {
+	if err := n.NewTable.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore TableToTable.NewTable")
 	}
 	return nil
@@ -569,25 +571,31 @@ func (n *CreateViewStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 	ctx.WriteKeyWord(n.Security.String())
 	ctx.WriteKeyWord(" VIEW ")
 
-	if err := n.ViewName.Restore(ctx); err != nil {
+	if err := n.ViewName.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while create CreateViewStmt.ViewName")
 	}
 
 	for i, col := range n.Cols {
 		if i == 0 {
-			ctx.WritePlain(" (")
+			ctx.WritePlain(" (\n")
 		} else {
 			ctx.WritePlain(",")
 		}
+		if i != 0 && i%5 == 0 && len(n.Cols) != i {
+			ctx.WritePlain("\n")
+		}
+		if i%5 == 0 && len(n.Cols) != i {
+			ctx.WritePlain(utils.GetIndent(level, indent, char))
+		}
 		ctx.WriteName(col.O)
 		if i == len(n.Cols)-1 {
-			ctx.WritePlain(")")
+			ctx.WritePlain("\n)")
 		}
 	}
 
-	ctx.WriteKeyWord(" AS ")
+	ctx.WriteKeyWord("\nAS\n")
 
-	if err := n.Select.Restore(ctx); err != nil {
+	if err := n.Select.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while create CreateViewStmt.Select")
 	}
 
@@ -610,13 +618,13 @@ func (n *CreateSequenceStmt) Pretty(ctx *format.RestoreCtx, level, indent int64,
 	}
 	for i, option := range n.SeqOptions {
 		ctx.WritePlain(" ")
-		if err := option.Restore(ctx); err != nil {
+		if err := option.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while splicing CreateSequenceStmt SequenceOption: [%v]", i)
 		}
 	}
 	for i, option := range n.TblOptions {
 		ctx.WritePlain(" ")
-		if err := option.Restore(ctx); err != nil {
+		if err := option.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while splicing CreateSequenceStmt TableOption: [%v]", i)
 		}
 	}
@@ -659,7 +667,7 @@ func (n *CreateIndexStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, ch
 	}
 	ctx.WriteName(n.IndexName)
 	ctx.WriteKeyWord(" ON ")
-	if err := n.Table.Restore(ctx); err != nil {
+	if err := n.Table.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore CreateIndexStmt.Table")
 	}
 
@@ -676,14 +684,14 @@ func (n *CreateIndexStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, ch
 
 	if n.IndexOption.Tp != model.IndexTypeInvalid || n.IndexOption.KeyBlockSize > 0 || n.IndexOption.Comment != "" || len(n.IndexOption.ParserName.O) > 0 || n.IndexOption.Visibility != IndexVisibilityDefault {
 		ctx.WritePlain(" ")
-		if err := n.IndexOption.Restore(ctx); err != nil {
+		if err := n.IndexOption.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore CreateIndexStmt.IndexOption")
 		}
 	}
 
 	if n.LockAlg != nil {
 		ctx.WritePlain(" ")
-		if err := n.LockAlg.Restore(ctx); err != nil {
+		if err := n.LockAlg.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore CreateIndexStmt.LockAlg")
 		}
 	}
@@ -699,13 +707,13 @@ func (n *DropIndexStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char
 	ctx.WriteName(n.IndexName)
 	ctx.WriteKeyWord(" ON ")
 
-	if err := n.Table.Restore(ctx); err != nil {
+	if err := n.Table.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while add index")
 	}
 
 	if n.LockAlg != nil {
 		ctx.WritePlain(" ")
-		if err := n.LockAlg.Restore(ctx); err != nil {
+		if err := n.LockAlg.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore CreateIndexStmt.LockAlg")
 		}
 	}
@@ -719,7 +727,7 @@ func (n *LockTablesStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 		if i != 0 {
 			ctx.WritePlain(", ")
 		}
-		if err := tl.Table.Restore(ctx); err != nil {
+		if err := tl.Table.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while add index")
 		}
 		ctx.WriteKeyWord(" " + tl.Type.String())
@@ -738,7 +746,7 @@ func (n *CleanupTableLockStmt) Pretty(ctx *format.RestoreCtx, level, indent int6
 		if i != 0 {
 			ctx.WritePlain(", ")
 		}
-		if err := v.Restore(ctx); err != nil {
+		if err := v.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore CleanupTableLockStmt.Tables[%d]", i)
 		}
 	}
@@ -747,11 +755,11 @@ func (n *CleanupTableLockStmt) Pretty(ctx *format.RestoreCtx, level, indent int6
 
 func (n *RepairTableStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("ADMIN REPAIR TABLE ")
-	if err := n.Table.Restore(ctx); err != nil {
+	if err := n.Table.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotatef(err, "An error occurred while restore RepairTableStmt.table : [%v]", n.Table)
 	}
 	ctx.WritePlain(" ")
-	if err := n.CreateStmt.Restore(ctx); err != nil {
+	if err := n.CreateStmt.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotatef(err, "An error occurred while restore RepairTableStmt.createStmt : [%v]", n.CreateStmt)
 	}
 	return nil
@@ -1002,7 +1010,7 @@ func (n *ColumnPosition) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 		ctx.WriteKeyWord("FIRST")
 	case ColumnPositionAfter:
 		ctx.WriteKeyWord("AFTER ")
-		if err := n.RelativeColumn.Restore(ctx); err != nil {
+		if err := n.RelativeColumn.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore ColumnPosition.RelativeColumn")
 		}
 	default:
@@ -1012,7 +1020,7 @@ func (n *ColumnPosition) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 }
 
 func (n *AlterOrderItem) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
-	if err := n.Column.Restore(ctx); err != nil {
+	if err := n.Column.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore AlterOrderItem.Column")
 	}
 	if n.Desc {
@@ -1060,7 +1068,7 @@ func (n *AlterTableSpec) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 				if i != 0 {
 					ctx.WritePlain(", ")
 				}
-				if err := opt.Restore(ctx); err != nil {
+				if err := opt.Pretty(ctx, level, indent, char); err != nil {
 					return errors.Annotatef(err, "An error occurred while restore AlterTableSpec.Options[%d]", i)
 				}
 			}
@@ -1071,7 +1079,7 @@ func (n *AlterTableSpec) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 			ctx.WriteKeyWord("IF NOT EXISTS ")
 		}
 		if n.Position != nil && len(n.NewColumns) == 1 {
-			if err := n.NewColumns[0].Restore(ctx); err != nil {
+			if err := n.NewColumns[0].Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore AlterTableSpec.NewColumns[%d]", 0)
 			}
 			if n.Position.Tp != ColumnPositionNone {
@@ -1082,12 +1090,13 @@ func (n *AlterTableSpec) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 			}
 		} else {
 			lenCols := len(n.NewColumns)
-			ctx.WritePlain("(")
+			ctx.WritePlain("(\n")
 			for i, col := range n.NewColumns {
 				if i != 0 {
-					ctx.WritePlain(", ")
+					ctx.WritePlain(",\n")
 				}
-				if err := col.Restore(ctx); err != nil {
+				ctx.WritePlain(utils.GetIndent(level, indent, char))
+				if err := col.Pretty(ctx, level+1, indent, char); err != nil {
 					return errors.Annotatef(err, "An error occurred while restore AlterTableSpec.NewColumns[%d]", i)
 				}
 			}
@@ -1095,15 +1104,17 @@ func (n *AlterTableSpec) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 				if i != 0 || lenCols >= 1 {
 					ctx.WritePlain(", ")
 				}
-				if err := constraint.Restore(ctx); err != nil {
+				if err := constraint.Pretty(ctx, level, indent, char); err != nil {
 					return errors.Annotatef(err, "An error occurred while restore AlterTableSpec.NewConstraints[%d]", i)
 				}
 			}
+			ctx.WritePlain("\n")
+			ctx.WritePlain(utils.GetIndent(level-1, indent, char))
 			ctx.WritePlain(")")
 		}
 	case AlterTableAddConstraint:
 		ctx.WriteKeyWord("ADD ")
-		if err := n.Constraint.Restore(ctx); err != nil {
+		if err := n.Constraint.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore AlterTableSpec.Constraint")
 		}
 	case AlterTableDropColumn:
@@ -1111,7 +1122,7 @@ func (n *AlterTableSpec) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 		if n.IfExists {
 			ctx.WriteKeyWord("IF EXISTS ")
 		}
-		if err := n.OldColumnName.Restore(ctx); err != nil {
+		if err := n.OldColumnName.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore AlterTableSpec.OldColumnName")
 		}
 	// TODO: RestrictOrCascadeOpt not support
@@ -1134,13 +1145,13 @@ func (n *AlterTableSpec) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 		if n.IfExists {
 			ctx.WriteKeyWord("IF EXISTS ")
 		}
-		if err := n.NewColumns[0].Restore(ctx); err != nil {
+		if err := n.NewColumns[0].Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore AlterTableSpec.NewColumns[0]")
 		}
 		if n.Position.Tp != ColumnPositionNone {
 			ctx.WritePlain(" ")
 		}
-		if err := n.Position.Restore(ctx); err != nil {
+		if err := n.Position.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore AlterTableSpec.Position")
 		}
 	case AlterTableChangeColumn:
@@ -1148,48 +1159,48 @@ func (n *AlterTableSpec) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 		if n.IfExists {
 			ctx.WriteKeyWord("IF EXISTS ")
 		}
-		if err := n.OldColumnName.Restore(ctx); err != nil {
+		if err := n.OldColumnName.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore AlterTableSpec.OldColumnName")
 		}
 		ctx.WritePlain(" ")
-		if err := n.NewColumns[0].Restore(ctx); err != nil {
+		if err := n.NewColumns[0].Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore AlterTableSpec.NewColumns[0]")
 		}
 		if n.Position.Tp != ColumnPositionNone {
 			ctx.WritePlain(" ")
 		}
-		if err := n.Position.Restore(ctx); err != nil {
+		if err := n.Position.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore AlterTableSpec.Position")
 		}
 	case AlterTableRenameColumn:
 		ctx.WriteKeyWord("RENAME COLUMN ")
-		if err := n.OldColumnName.Restore(ctx); err != nil {
+		if err := n.OldColumnName.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore AlterTableSpec.OldColumnName")
 		}
 		ctx.WriteKeyWord(" TO ")
-		if err := n.NewColumnName.Restore(ctx); err != nil {
+		if err := n.NewColumnName.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore AlterTableSpec.NewColumnName")
 		}
 	case AlterTableRenameTable:
 		ctx.WriteKeyWord("RENAME AS ")
-		if err := n.NewTable.Restore(ctx); err != nil {
+		if err := n.NewTable.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore AlterTableSpec.NewTable")
 		}
 	case AlterTableAlterColumn:
 		ctx.WriteKeyWord("ALTER COLUMN ")
-		if err := n.NewColumns[0].Restore(ctx); err != nil {
+		if err := n.NewColumns[0].Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore AlterTableSpec.NewColumns[0]")
 		}
 		if len(n.NewColumns[0].Options) == 1 {
 			ctx.WriteKeyWord("SET DEFAULT ")
 			expr := n.NewColumns[0].Options[0].Expr
 			if valueExpr, ok := expr.(ValueExpr); ok {
-				if err := valueExpr.Restore(ctx); err != nil {
+				if err := valueExpr.Pretty(ctx, level, indent, char); err != nil {
 					return errors.Annotate(err, "An error occurred while restore AlterTableSpec.NewColumns[0].Options[0].Expr")
 				}
 			} else {
 				ctx.WritePlain("(")
-				if err := expr.Restore(ctx); err != nil {
+				if err := expr.Pretty(ctx, level+1, indent, char); err != nil {
 					return errors.Annotate(err, "An error occurred while restore AlterTableSpec.NewColumns[0].Options[0].Expr")
 				}
 				ctx.WritePlain(")")
@@ -1207,7 +1218,7 @@ func (n *AlterTableSpec) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 			if i != 0 {
 				ctx.WritePlain(",")
 			}
-			if err := alterOrderItem.Restore(ctx); err != nil {
+			if err := alterOrderItem.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore AlterTableSpec.OrderByList[%d]", i)
 			}
 		}
@@ -1233,15 +1244,18 @@ func (n *AlterTableSpec) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 			ctx.WriteKeyWord(" NO_WRITE_TO_BINLOG")
 		}
 		if n.PartDefinitions != nil {
-			ctx.WritePlain(" (")
+			ctx.WritePlain(" (\n")
 			for i, def := range n.PartDefinitions {
 				if i != 0 {
-					ctx.WritePlain(", ")
+					ctx.WritePlain(",\n")
 				}
-				if err := def.Restore(ctx); err != nil {
+				ctx.WritePlain(utils.GetIndent(level, indent, char))
+				if err := def.Pretty(ctx, level+1, indent, char); err != nil {
 					return errors.Annotatef(err, "An error occurred while restore AlterTableSpec.PartDefinitions[%d]", i)
 				}
 			}
+			ctx.WritePlain("\n")
+			ctx.WritePlain(utils.GetIndent(level-1, indent, char))
 			ctx.WritePlain(")")
 		} else if n.Num != 0 {
 			ctx.WriteKeyWord(" PARTITIONS ")
@@ -1345,7 +1359,7 @@ func (n *AlterTableSpec) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 		}
 		ctx.WriteKeyWord(" TABLESPACE")
 	case AlterTablePartition:
-		if err := n.Partition.Restore(ctx); err != nil {
+		if err := n.Partition.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore AlterTableSpec.Partition")
 		}
 	case AlterTableEnableKeys:
@@ -1391,22 +1405,25 @@ func (n *AlterTableSpec) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 		}
 		ctx.WriteKeyWord(" INTO ")
 		if n.PartDefinitions != nil {
-			ctx.WritePlain("(")
+			ctx.WritePlain("(\n")
 			for i, def := range n.PartDefinitions {
 				if i != 0 {
-					ctx.WritePlain(", ")
+					ctx.WritePlain(",\n")
 				}
-				if err := def.Restore(ctx); err != nil {
+				ctx.WritePlain(utils.GetIndent(level, indent, char))
+				if err := def.Pretty(ctx, level+1, indent, char); err != nil {
 					return errors.Annotatef(err, "An error occurred while restore AlterTableSpec.PartDefinitions[%d]", i)
 				}
 			}
+			ctx.WritePlain("\n")
+			ctx.WritePlain(utils.GetIndent(level-1, indent, char))
 			ctx.WritePlain(")")
 		}
 	case AlterTableExchangePartition:
 		ctx.WriteKeyWord("EXCHANGE PARTITION ")
 		ctx.WriteName(n.PartitionNames[0].O)
 		ctx.WriteKeyWord(" WITH TABLE ")
-		n.NewTable.Restore(ctx)
+		n.NewTable.Pretty(ctx, level, indent, char)
 		if !n.WithValidation {
 			ctx.WriteKeyWord(" WITHOUT VALIDATION")
 		}
@@ -1446,16 +1463,17 @@ func (n *AlterTableSpec) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 
 func (n *AlterTableStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("ALTER TABLE ")
-	if err := n.Table.Restore(ctx); err != nil {
+	if err := n.Table.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore AlterTableStmt.Table")
 	}
 	for i, spec := range n.Specs {
 		if i == 0 || spec.Tp == AlterTablePartition || spec.Tp == AlterTableRemovePartitioning || spec.Tp == AlterTableImportTablespace || spec.Tp == AlterTableDiscardTablespace {
-			ctx.WritePlain(" ")
+			ctx.WritePlain("\n")
 		} else {
-			ctx.WritePlain(", ")
+			ctx.WritePlain(",\n")
 		}
-		if err := spec.Restore(ctx); err != nil {
+		ctx.WritePlain(utils.GetIndent(level, indent, char))
+		if err := spec.Pretty(ctx, level+1, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore AlterTableStmt.Specs[%d]", i)
 		}
 	}
@@ -1464,7 +1482,7 @@ func (n *AlterTableStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 
 func (n *TruncateTableStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("TRUNCATE TABLE ")
-	if err := n.Table.Restore(ctx); err != nil {
+	if err := n.Table.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore TruncateTableStmt.Table")
 	}
 	return nil
@@ -1475,7 +1493,7 @@ func (spd *SubPartitionDefinition) Pretty(ctx *format.RestoreCtx, level, indent 
 	ctx.WriteName(spd.Name.O)
 	for i, opt := range spd.Options {
 		ctx.WritePlain(" ")
-		if err := opt.Restore(ctx); err != nil {
+		if err := opt.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore SubPartitionDefinition.Options[%d]", i)
 		}
 	}
@@ -1493,7 +1511,7 @@ func (n *PartitionDefinitionClauseLessThan) pretty(ctx *format.RestoreCtx, level
 		if i != 0 {
 			ctx.WritePlain(", ")
 		}
-		if err := expr.Restore(ctx); err != nil {
+		if err := expr.Pretty(ctx, level+1, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore PartitionDefinitionClauseLessThan.Exprs[%d]", i)
 		}
 	}
@@ -1515,20 +1533,26 @@ func (n *PartitionDefinitionClauseIn) pretty(ctx *format.RestoreCtx, level, inde
 			ctx.WritePlain(", ")
 		}
 		if len(valList) == 1 {
-			if err := valList[0].Restore(ctx); err != nil {
+			if err := valList[0].Pretty(ctx, level+1, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore PartitionDefinitionClauseIn.Values[%d][0]", i)
 			}
 		} else {
+			ctx.WritePlain("\n")
+			ctx.WritePlain(utils.GetIndent(level, indent, char))
 			ctx.WritePlain("(")
 			for j, val := range valList {
 				if j != 0 {
-					ctx.WritePlain(", ")
+					ctx.WritePlain(",")
 				}
-				if err := val.Restore(ctx); err != nil {
+				if err := val.Pretty(ctx, level+1, indent, char); err != nil {
 					return errors.Annotatef(err, "An error occurred while restore PartitionDefinitionClauseIn.Values[%d][%d]", i, j)
 				}
 			}
 			ctx.WritePlain(")")
+			if i == len(n.Values)-1 {
+				ctx.WritePlain("\n")
+				ctx.WritePlain(utils.GetIndent(level-1, indent, char))
+			}
 		}
 	}
 	ctx.WritePlain(")")
@@ -1548,27 +1572,30 @@ func (n *PartitionDefinition) Pretty(ctx *format.RestoreCtx, level, indent int64
 	ctx.WriteKeyWord("PARTITION ")
 	ctx.WriteName(n.Name.O)
 
-	if err := n.Clause.restore(ctx); err != nil {
+	if err := n.Clause.pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore PartitionDefinition.Clause")
 	}
 
 	for i, opt := range n.Options {
 		ctx.WritePlain(" ")
-		if err := opt.Restore(ctx); err != nil {
+		if err := opt.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore PartitionDefinition.Options[%d]", i)
 		}
 	}
 
 	if len(n.Sub) > 0 {
-		ctx.WritePlain(" (")
+		ctx.WritePlain(" (\n")
 		for i, spd := range n.Sub {
 			if i != 0 {
-				ctx.WritePlain(",")
+				ctx.WritePlain(",\n")
 			}
-			if err := spd.Restore(ctx); err != nil {
+			ctx.WritePlain(utils.GetIndent(level, indent, char))
+			if err := spd.Pretty(ctx, level+1, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore PartitionDefinition.Sub[%d]", i)
 			}
 		}
+		ctx.WritePlain("\n")
+		ctx.WritePlain(utils.GetIndent(level-1, indent, char))
 		ctx.WritePlain(")")
 	}
 
@@ -1585,7 +1612,7 @@ func (n *PartitionMethod) Pretty(ctx *format.RestoreCtx, level, indent int64, ch
 	case n.Tp == model.PartitionTypeSystemTime:
 		if n.Expr != nil && n.Unit != TimeUnitInvalid {
 			ctx.WriteKeyWord(" INTERVAL ")
-			if err := n.Expr.Restore(ctx); err != nil {
+			if err := n.Expr.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotate(err, "An error occurred while restore PartitionMethod.Expr")
 			}
 			ctx.WritePlain(" ")
@@ -1594,7 +1621,7 @@ func (n *PartitionMethod) Pretty(ctx *format.RestoreCtx, level, indent int64, ch
 
 	case n.Expr != nil:
 		ctx.WritePlain(" (")
-		if err := n.Expr.Restore(ctx); err != nil {
+		if err := n.Expr.Pretty(ctx, level+1, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore PartitionMethod.Expr")
 		}
 		ctx.WritePlain(")")
@@ -1608,7 +1635,7 @@ func (n *PartitionMethod) Pretty(ctx *format.RestoreCtx, level, indent int64, ch
 			if i > 0 {
 				ctx.WritePlain(",")
 			}
-			if err := col.Restore(ctx); err != nil {
+			if err := col.Pretty(ctx, level+1, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while splicing PartitionMethod.ColumnName[%d]", i)
 			}
 		}
@@ -1625,7 +1652,7 @@ func (n *PartitionMethod) Pretty(ctx *format.RestoreCtx, level, indent int64, ch
 
 func (n *PartitionOptions) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("PARTITION BY ")
-	if err := n.PartitionMethod.Restore(ctx); err != nil {
+	if err := n.PartitionMethod.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore PartitionOptions.PartitionMethod")
 	}
 
@@ -1635,26 +1662,31 @@ func (n *PartitionOptions) Pretty(ctx *format.RestoreCtx, level, indent int64, c
 	}
 
 	if n.Sub != nil {
-		ctx.WriteKeyWord(" SUBPARTITION BY ")
-		if err := n.Sub.Restore(ctx); err != nil {
+		ctx.WriteKeyWord("\n")
+		ctx.WriteKeyWord("SUBPARTITION BY ")
+		if err := n.Sub.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore PartitionOptions.Sub")
 		}
 		if n.Sub.Num > 0 {
-			ctx.WriteKeyWord(" SUBPARTITIONS ")
+			ctx.WriteKeyWord("\n")
+			ctx.WriteKeyWord("SUBPARTITIONS ")
 			ctx.WritePlainf("%d", n.Sub.Num)
 		}
 	}
 
 	if len(n.Definitions) > 0 {
-		ctx.WritePlain(" (")
+		ctx.WritePlain(" (\n")
 		for i, def := range n.Definitions {
 			if i > 0 {
-				ctx.WritePlain(",")
+				ctx.WritePlain(",\n")
 			}
-			if err := def.Restore(ctx); err != nil {
+			ctx.WritePlain(utils.GetIndent(level, indent, char))
+			if err := def.Pretty(ctx, level+1, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore PartitionOptions.Definitions[%d]", i)
 			}
 		}
+		ctx.WritePlain("\n")
+		ctx.WritePlain(utils.GetIndent(level-1, indent, char))
 		ctx.WritePlain(")")
 	}
 
@@ -1667,7 +1699,7 @@ func (n *RecoverTableStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, c
 		ctx.WriteKeyWord("BY JOB ")
 		ctx.WritePlainf("%d", n.JobID)
 	} else {
-		if err := n.Table.Restore(ctx); err != nil {
+		if err := n.Table.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while splicing RecoverTableStmt Table")
 		}
 		if n.JobNum > 0 {
@@ -1679,7 +1711,7 @@ func (n *RecoverTableStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, c
 
 func (n *FlashBackTableStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("FLASHBACK TABLE ")
-	if err := n.Table.Restore(ctx); err != nil {
+	if err := n.Table.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while splicing RecoverTableStmt Table")
 	}
 	if len(n.NewName) > 0 {
