@@ -856,21 +856,21 @@ func (n *UpdateStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 
 	if n.Where != nil {
 		ctx.WriteKeyWord("\nWHERE ")
-		if err := n.Where.Restore(ctx); err != nil {
+		if err := n.Where.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occur while restore UpdateStmt.Where")
 		}
 	}
 
 	if n.Order != nil {
 		ctx.WritePlain("\n")
-		if err := n.Order.Restore(ctx); err != nil {
+		if err := n.Order.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occur while restore UpdateStmt.Order")
 		}
 	}
 
 	if n.Limit != nil {
 		ctx.WritePlain("\n")
-		if err := n.Limit.Restore(ctx); err != nil {
+		if err := n.Limit.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occur while restore UpdateStmt.Limit")
 		}
 	}
@@ -881,41 +881,41 @@ func (n *UpdateStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 func (n *Limit) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("LIMIT ")
 	if n.Offset != nil {
-		if err := n.Offset.Restore(ctx); err != nil {
+		if err := n.Offset.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore Limit.Offset")
 		}
 		ctx.WritePlain(",")
 	}
-	if err := n.Count.Restore(ctx); err != nil {
+	if err := n.Count.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore Limit.Count")
 	}
 	return nil
 }
 
 func (n *ShowStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
-	restoreOptFull := func() {
+	prettyOptFull := func() {
 		if n.Full {
 			ctx.WriteKeyWord("FULL ")
 		}
 	}
-	restoreShowDatabaseNameOpt := func() {
+	prettyShowDatabaseNameOpt := func() {
 		if n.DBName != "" {
 			// FROM OR IN
 			ctx.WriteKeyWord(" IN ")
 			ctx.WriteName(n.DBName)
 		}
 	}
-	restoreGlobalScope := func() {
+	prettyGlobalScope := func() {
 		if n.GlobalScope {
 			ctx.WriteKeyWord("GLOBAL ")
 		} else {
 			ctx.WriteKeyWord("SESSION ")
 		}
 	}
-	restoreShowLikeOrWhereOpt := func() error {
+	prettyShowLikeOrWhereOpt := func() error {
 		if n.Pattern != nil && n.Pattern.Pattern != nil {
 			ctx.WriteKeyWord(" LIKE ")
-			if err := n.Pattern.Pattern.Restore(ctx); err != nil {
+			if err := n.Pattern.Pattern.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotate(err, "An error occurred while restore ShowStmt.Pattern")
 			}
 		} else if n.Where != nil {
@@ -931,12 +931,12 @@ func (n *ShowStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char stri
 	switch n.Tp {
 	case ShowCreateTable:
 		ctx.WriteKeyWord("CREATE TABLE ")
-		if err := n.Table.Restore(ctx); err != nil {
+		if err := n.Table.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore ShowStmt.Table")
 		}
 	case ShowCreateView:
 		ctx.WriteKeyWord("CREATE VIEW ")
-		if err := n.Table.Restore(ctx); err != nil {
+		if err := n.Table.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore ShowStmt.VIEW")
 		}
 	case ShowCreateDatabase:
@@ -947,26 +947,26 @@ func (n *ShowStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char stri
 		ctx.WriteName(n.DBName)
 	case ShowCreateSequence:
 		ctx.WriteKeyWord("CREATE SEQUENCE ")
-		if err := n.Table.Restore(ctx); err != nil {
+		if err := n.Table.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore ShowStmt.SEQUENCE")
 		}
 	case ShowCreateUser:
 		ctx.WriteKeyWord("CREATE USER ")
-		if err := n.User.Restore(ctx); err != nil {
+		if err := n.User.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore ShowStmt.User")
 		}
 	case ShowGrants:
 		ctx.WriteKeyWord("GRANTS")
 		if n.User != nil {
 			ctx.WriteKeyWord(" FOR ")
-			if err := n.User.Restore(ctx); err != nil {
+			if err := n.User.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotate(err, "An error occurred while restore ShowStmt.User")
 			}
 		}
 		if n.Roles != nil {
 			ctx.WriteKeyWord(" USING ")
 			for i, r := range n.Roles {
-				if err := r.Restore(ctx); err != nil {
+				if err := r.Pretty(ctx, level, indent, char); err != nil {
 					return errors.Annotate(err, "An error occurred while restore ShowStmt.User")
 				}
 				if i != len(n.Roles)-1 {
@@ -977,26 +977,26 @@ func (n *ShowStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char stri
 	case ShowMasterStatus:
 		ctx.WriteKeyWord("MASTER STATUS")
 	case ShowProcessList:
-		restoreOptFull()
+		prettyOptFull()
 		ctx.WriteKeyWord("PROCESSLIST")
 	case ShowStatsMeta:
 		ctx.WriteKeyWord("STATS_META")
-		if err := restoreShowLikeOrWhereOpt(); err != nil {
+		if err := prettyShowLikeOrWhereOpt(); err != nil {
 			return err
 		}
 	case ShowStatsHistograms:
 		ctx.WriteKeyWord("STATS_HISTOGRAMS")
-		if err := restoreShowLikeOrWhereOpt(); err != nil {
+		if err := prettyShowLikeOrWhereOpt(); err != nil {
 			return err
 		}
 	case ShowStatsBuckets:
 		ctx.WriteKeyWord("STATS_BUCKETS")
-		if err := restoreShowLikeOrWhereOpt(); err != nil {
+		if err := prettyShowLikeOrWhereOpt(); err != nil {
 			return err
 		}
 	case ShowStatsHealthy:
 		ctx.WriteKeyWord("STATS_HEALTHY")
-		if err := restoreShowLikeOrWhereOpt(); err != nil {
+		if err := prettyShowLikeOrWhereOpt(); err != nil {
 			return err
 		}
 	case ShowProfiles:
@@ -1037,7 +1037,7 @@ func (n *ShowStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char stri
 		}
 		if n.ShowProfileLimit != nil {
 			ctx.WritePlain(" ")
-			if err := n.ShowProfileLimit.Restore(ctx); err != nil {
+			if err := n.ShowProfileLimit.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotate(err, "An error occurred while restore ShowStmt.WritePlain")
 			}
 		}
@@ -1058,15 +1058,15 @@ func (n *ShowStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char stri
 		case ShowCharset:
 			ctx.WriteKeyWord("CHARSET")
 		case ShowTables:
-			restoreOptFull()
+			prettyOptFull()
 			ctx.WriteKeyWord("TABLES")
-			restoreShowDatabaseNameOpt()
+			prettyShowDatabaseNameOpt()
 		case ShowOpenTables:
 			ctx.WriteKeyWord("OPEN TABLES")
-			restoreShowDatabaseNameOpt()
+			prettyShowDatabaseNameOpt()
 		case ShowTableStatus:
 			ctx.WriteKeyWord("TABLE STATUS")
-			restoreShowDatabaseNameOpt()
+			prettyShowDatabaseNameOpt()
 		case ShowIndex:
 			// here can be INDEX INDEXES KEYS
 			// FROM or IN
@@ -1078,7 +1078,7 @@ func (n *ShowStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char stri
 			if n.Extended {
 				ctx.WriteKeyWord("EXTENDED ")
 			}
-			restoreOptFull()
+			prettyOptFull()
 			ctx.WriteKeyWord("COLUMNS")
 			if n.Table != nil {
 				// FROM or IN
@@ -1087,27 +1087,27 @@ func (n *ShowStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char stri
 					return errors.Annotate(err, "An error occurred while resotre ShowStmt.Table")
 				}
 			}
-			restoreShowDatabaseNameOpt()
+			prettyShowDatabaseNameOpt()
 		case ShowWarnings:
 			ctx.WriteKeyWord("WARNINGS")
 		case ShowErrors:
 			ctx.WriteKeyWord("ERRORS")
 		case ShowVariables:
-			restoreGlobalScope()
+			prettyGlobalScope()
 			ctx.WriteKeyWord("VARIABLES")
 		case ShowStatus:
-			restoreGlobalScope()
+			prettyGlobalScope()
 			ctx.WriteKeyWord("STATUS")
 		case ShowCollation:
 			ctx.WriteKeyWord("COLLATION")
 		case ShowTriggers:
 			ctx.WriteKeyWord("TRIGGERS")
-			restoreShowDatabaseNameOpt()
+			prettyShowDatabaseNameOpt()
 		case ShowProcedureStatus:
 			ctx.WriteKeyWord("PROCEDURE STATUS")
 		case ShowEvents:
 			ctx.WriteKeyWord("EVENTS")
-			restoreShowDatabaseNameOpt()
+			prettyShowDatabaseNameOpt()
 		case ShowPlugins:
 			ctx.WriteKeyWord("PLUGINS")
 		case ShowBindings:
@@ -1133,13 +1133,13 @@ func (n *ShowStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char stri
 				ctx.WriteName(n.IndexName.String())
 			}
 			ctx.WriteKeyWord(" REGIONS")
-			if err := restoreShowLikeOrWhereOpt(); err != nil {
+			if err := prettyShowLikeOrWhereOpt(); err != nil {
 				return err
 			}
 			return nil
 		case ShowTableNextRowId:
 			ctx.WriteKeyWord("TABLE ")
-			if err := n.Table.Restore(ctx); err != nil {
+			if err := n.Table.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotate(err, "An error occurred while restore SplitIndexRegionStmt.Table")
 			}
 			ctx.WriteKeyWord(" NEXT_ROW_ID")
@@ -1153,7 +1153,7 @@ func (n *ShowStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char stri
 		default:
 			return errors.New("Unknown ShowStmt type")
 		}
-		restoreShowLikeOrWhereOpt()
+		prettyShowLikeOrWhereOpt()
 	}
 	return nil
 }
@@ -1174,21 +1174,21 @@ func (n *WindowSpec) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 	}
 	if n.PartitionBy != nil {
 		ctx.WritePlain(sep)
-		if err := n.PartitionBy.Restore(ctx); err != nil {
+		if err := n.PartitionBy.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore WindowSpec.PartitionBy")
 		}
 		sep = " "
 	}
 	if n.OrderBy != nil {
 		ctx.WritePlain(sep)
-		if err := n.OrderBy.Restore(ctx); err != nil {
+		if err := n.OrderBy.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore WindowSpec.OrderBy")
 		}
 		sep = " "
 	}
 	if n.Frame != nil {
 		ctx.WritePlain(sep)
-		if err := n.Frame.Restore(ctx); err != nil {
+		if err := n.Frame.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore WindowSpec.Frame")
 		}
 	}
@@ -1206,12 +1206,12 @@ func (n *SelectIntoOption) Pretty(ctx *format.RestoreCtx, level, indent int64, c
 	ctx.WriteKeyWord("INTO OUTFILE ")
 	ctx.WriteString(n.FileName)
 	if n.FieldsInfo != nil {
-		if err := n.FieldsInfo.Restore(ctx); err != nil {
+		if err := n.FieldsInfo.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore SelectInto.FieldsInfo")
 		}
 	}
 	if n.LinesInfo != nil {
-		if err := n.LinesInfo.Restore(ctx); err != nil {
+		if err := n.LinesInfo.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore SelectInto.LinesInfo")
 		}
 	}
@@ -1224,7 +1224,7 @@ func (n *PartitionByClause) Pretty(ctx *format.RestoreCtx, level, indent int64, 
 		if i != 0 {
 			ctx.WritePlain(", ")
 		}
-		if err := v.Restore(ctx); err != nil {
+		if err := v.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore PartitionByClause.Items[%d]", i)
 		}
 	}
@@ -1241,11 +1241,11 @@ func (n *FrameClause) Pretty(ctx *format.RestoreCtx, level, indent int64, char s
 		return errors.New("Unsupported window function frame type")
 	}
 	ctx.WriteKeyWord(" BETWEEN ")
-	if err := n.Extent.Start.Restore(ctx); err != nil {
+	if err := n.Extent.Start.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore FrameClause.Extent.Start")
 	}
 	ctx.WriteKeyWord(" AND ")
-	if err := n.Extent.End.Restore(ctx); err != nil {
+	if err := n.Extent.End.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore FrameClause.Extent.End")
 	}
 
@@ -1264,7 +1264,7 @@ func (n *FrameBound) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 			ctx.WriteKeyWord("INTERVAL ")
 		}
 		if n.Expr != nil {
-			if err := n.Expr.Restore(ctx); err != nil {
+			if err := n.Expr.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotate(err, "An error occurred while restore FrameBound.Expr")
 			}
 		}
@@ -1294,7 +1294,7 @@ func (n *SplitRegionStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, ch
 	}
 	ctx.WriteKeyWord("TABLE ")
 
-	if err := n.Table.Restore(ctx); err != nil {
+	if err := n.Table.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore SplitIndexRegionStmt.Table")
 	}
 	if len(n.PartitionNames) > 0 {
@@ -1314,7 +1314,7 @@ func (n *SplitRegionStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, ch
 		ctx.WriteName(n.IndexName.String())
 	}
 	ctx.WritePlain(" ")
-	err := n.SplitOpt.Restore(ctx)
+	err := n.SplitOpt.Pretty(ctx, level, indent, char)
 	return err
 }
 
@@ -1326,7 +1326,7 @@ func (n *SplitOption) Pretty(ctx *format.RestoreCtx, level, indent int64, char s
 			if j != 0 {
 				ctx.WritePlain(",")
 			}
-			if err := v.Restore(ctx); err != nil {
+			if err := v.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore SplitOption Lower")
 			}
 		}
@@ -1338,7 +1338,7 @@ func (n *SplitOption) Pretty(ctx *format.RestoreCtx, level, indent int64, char s
 			if j != 0 {
 				ctx.WritePlain(",")
 			}
-			if err := v.Restore(ctx); err != nil {
+			if err := v.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore SplitOption Upper")
 			}
 		}
@@ -1357,7 +1357,7 @@ func (n *SplitOption) Pretty(ctx *format.RestoreCtx, level, indent int64, char s
 			if j != 0 {
 				ctx.WritePlain(",")
 			}
-			if err := v.Restore(ctx); err != nil {
+			if err := v.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore SplitOption.ValueLists[%d][%d]", i, j)
 			}
 		}
