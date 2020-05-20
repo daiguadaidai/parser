@@ -518,3 +518,35 @@ WHERE id = 1
 	fmt.Println("Pretty 语句:")
 	fmt.Println(sb2.String())
 }
+
+func Test_Pretty_Update(t *testing.T) {
+	query := `
+UPDATE t1
+LEFT JOIN t2
+    ON t1.a = t2.a
+SET a = 1,
+    b = 2
+WHERE id = 1
+`
+	ps := New()
+	stmt, err := ps.ParseOneStmt(query, "", "")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	fmt.Println(stmt.Text())
+
+	var sb1 strings.Builder
+	if err = stmt.Restore(format1.NewRestoreCtx(format1.DefaultRestoreFlags, &sb1)); err != nil {
+		t.Fatalf("Restore 出错. %s", err.Error())
+	}
+	fmt.Println("Restore 语句:", sb1.String())
+
+	var sb2 strings.Builder
+	if err = stmt.Pretty(format1.NewRestoreCtx(format1.DefaultRestoreFlags, &sb2), 0, 4, " "); err != nil {
+		t.Fatalf("Pretty 出错. %s", err.Error())
+	}
+
+	fmt.Println("Pretty 语句:")
+	fmt.Println(sb2.String())
+}

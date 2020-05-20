@@ -810,12 +810,13 @@ func (n *DeleteStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 }
 
 func (n *UpdateStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
+	level += 1
 	ctx.WriteKeyWord("UPDATE ")
 
 	if n.TableHints != nil && len(n.TableHints) != 0 {
 		ctx.WritePlain("/*+ ")
 		for i, tableHint := range n.TableHints {
-			if err := tableHint.Restore(ctx); err != nil {
+			if err := tableHint.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotatef(err, "An error occurred while restore UpdateStmt.TableHints[%d]", i)
 			}
 		}
@@ -832,43 +833,43 @@ func (n *UpdateStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 		ctx.WriteKeyWord("IGNORE ")
 	}
 
-	if err := n.TableRefs.Restore(ctx); err != nil {
+	if err := n.TableRefs.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occur while restore UpdateStmt.TableRefs")
 	}
 
-	ctx.WriteKeyWord(" SET ")
+	ctx.WriteKeyWord("\nSET\n")
 	for i, assignment := range n.List {
 		if i != 0 {
-			ctx.WritePlain(", ")
+			ctx.WritePlain(",\n")
 		}
-
-		if err := assignment.Column.Restore(ctx); err != nil {
+		ctx.WritePlain(utils.GetIndent(level, indent, char))
+		if err := assignment.Column.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occur while restore UpdateStmt.List[%d].Column", i)
 		}
 
 		ctx.WritePlain("=")
 
-		if err := assignment.Expr.Restore(ctx); err != nil {
+		if err := assignment.Expr.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occur while restore UpdateStmt.List[%d].Expr", i)
 		}
 	}
 
 	if n.Where != nil {
-		ctx.WriteKeyWord(" WHERE ")
+		ctx.WriteKeyWord("\nWHERE ")
 		if err := n.Where.Restore(ctx); err != nil {
 			return errors.Annotate(err, "An error occur while restore UpdateStmt.Where")
 		}
 	}
 
 	if n.Order != nil {
-		ctx.WritePlain(" ")
+		ctx.WritePlain("\n")
 		if err := n.Order.Restore(ctx); err != nil {
 			return errors.Annotate(err, "An error occur while restore UpdateStmt.Order")
 		}
 	}
 
 	if n.Limit != nil {
-		ctx.WritePlain(" ")
+		ctx.WritePlain("\n")
 		if err := n.Limit.Restore(ctx); err != nil {
 			return errors.Annotate(err, "An error occur while restore UpdateStmt.Limit")
 		}
