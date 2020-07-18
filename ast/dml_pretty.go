@@ -182,7 +182,7 @@ func (n *OnCondition) Pretty(ctx *format.RestoreCtx, level, indent int64, char s
 func (n *TableSource) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	needParen := false
 	switch n.Source.(type) {
-	case *SelectStmt, *UnionStmt:
+	case *SelectStmt, *SetOprStmt:
 		needParen = true
 	}
 
@@ -464,13 +464,19 @@ func (n *SelectStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 	return nil
 }
 
-func (n *UnionSelectList) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
+func (n *SetOprSelectList) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	for i, selectStmt := range n.Selects {
 		if i != 0 {
 			ctx.WriteKeyWord("\n")
-			ctx.WriteKeyWord("UNION ")
-			if !selectStmt.IsAfterUnionDistinct {
-				ctx.WriteKeyWord("ALL ")
+			switch *selectStmt.AfterSetOperator {
+			case Union:
+				ctx.WriteKeyWord(" UNION ")
+			case UnionAll:
+				ctx.WriteKeyWord(" UNION ALL ")
+			case Except:
+				ctx.WriteKeyWord(" EXCEPT ")
+			case Intersect:
+				ctx.WriteKeyWord(" INTERSECT ")
 			}
 			ctx.WriteKeyWord("\n")
 		}
@@ -478,7 +484,7 @@ func (n *UnionSelectList) Pretty(ctx *format.RestoreCtx, level, indent int64, ch
 			ctx.WritePlain("(")
 		}
 		if err := selectStmt.Pretty(ctx, level, indent, char); err != nil {
-			return errors.Annotate(err, "An error occurred while restore UnionSelectList.SelectStmt")
+			return errors.Annotate(err, "An error occurred while restore SetOprSelectList.SelectStmt")
 		}
 		if selectStmt.IsInBraces {
 			ctx.WritePlain(")")
@@ -487,7 +493,7 @@ func (n *UnionSelectList) Pretty(ctx *format.RestoreCtx, level, indent int64, ch
 	return nil
 }
 
-func (n *UnionStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
+func (n *SetOprStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	if err := n.SelectList.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore UnionStmt.SelectList")
 	}
@@ -693,7 +699,7 @@ func (n *InsertStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 	if n.Select != nil {
 		ctx.WritePlain("\n")
 		switch v := n.Select.(type) {
-		case *SelectStmt, *UnionStmt:
+		case *SelectStmt, *SetOprStmt:
 			if err := v.Pretty(ctx, level, indent, char); err != nil {
 				return errors.Annotate(err, "An error occurred while restore InsertStmt.Select")
 			}
