@@ -37,7 +37,16 @@ func (n *FuncCallExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char 
 		return nil
 	}
 
-	ctx.WriteKeyWord(n.FnName.O)
+	if len(n.Schema.String()) != 0 {
+		ctx.WriteName(n.Schema.O)
+		ctx.WritePlain(".")
+	}
+	if n.Tp == FuncCallExprTypeGeneric {
+		ctx.WriteName(n.FnName.O)
+	} else {
+		ctx.WriteKeyWord(n.FnName.O)
+	}
+
 	ctx.WritePlain("(")
 	switch n.FnName.L {
 	case "convert":
