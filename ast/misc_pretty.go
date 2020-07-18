@@ -1101,6 +1101,17 @@ func (ht *HintTable) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 		ctx.WriteKeyWord("@")
 		ctx.WriteName(ht.QBName.String())
 	}
+	if len(ht.PartitionList) > 0 {
+		ctx.WriteKeyWord(" PARTITION")
+		ctx.WritePlain("(")
+		for i, p := range ht.PartitionList {
+			if i > 0 {
+				ctx.WritePlain(", ")
+			}
+			ctx.WriteName(p.String())
+		}
+		ctx.WritePlain(")")
+	}
 }
 
 func (n *TableOptimizerHint) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
