@@ -438,6 +438,9 @@ func (t *TLSOption) Pretty(ctx *format.RestoreCtx, level, indent int64, char str
 	case Issuer:
 		ctx.WriteKeyWord("ISSUER ")
 		ctx.WriteString(t.Value)
+	case SAN:
+		ctx.WriteKeyWord("SAN ")
+		ctx.WriteString(t.Value)
 	case Subject:
 		ctx.WriteKeyWord("SUBJECT ")
 		ctx.WriteString(t.Value)
