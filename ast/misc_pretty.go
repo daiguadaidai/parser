@@ -1136,6 +1136,8 @@ func (n *TableOptimizerHint) Pretty(ctx *format.RestoreCtx, level, indent int64,
 	switch n.HintName.L {
 	case "max_execution_time":
 		ctx.WritePlainf("%d", n.HintData.(uint64))
+	case "nth_plan":
+		ctx.WritePlainf("%d", n.HintData.(int64))
 	case "tidb_hj", "tidb_smj", "tidb_inlj", "hash_join", "merge_join", "inl_join":
 		for i, table := range n.Tables {
 			if i != 0 {
