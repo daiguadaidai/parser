@@ -217,6 +217,11 @@ func (n *ColumnOption) Pretty(ctx *format.RestoreCtx, level, indent int64, char 
 		ctx.WriteKeyWord("COLLATE ")
 		ctx.WritePlain(n.StrValue)
 	case ColumnOptionCheck:
+		if n.ConstraintName != "" {
+			ctx.WriteKeyWord("CONSTRAINT ")
+			ctx.WriteName(n.ConstraintName)
+			ctx.WritePlain(" ")
+		}
 		ctx.WriteKeyWord("CHECK")
 		ctx.WritePlain("(")
 		if err := n.Expr.Pretty(ctx, level+1, indent, char); err != nil {
