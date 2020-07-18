@@ -392,7 +392,7 @@ func (n *ColumnDef) Pretty(ctx *format.RestoreCtx, level, indent int64, char str
 	}
 	if n.Tp != nil {
 		ctx.WritePlain(" ")
-		if err := n.Tp.Restore(ctx); err != nil {
+		if err := n.Tp.Pretty(ctx); err != nil {
 			return errors.Annotate(err, "An error occurred while splicing ColumnDef Type")
 		}
 	}
