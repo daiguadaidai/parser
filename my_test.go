@@ -410,7 +410,7 @@ LIMIT 1,100
 
 func Test_Pretty_InsertIntoValues(t *testing.T) {
 	query := `
-INSERT INTO t1 VALUES(1),(1),(1),(1),(1),(1),(1);
+INSERT INTO t1 VALUES(1, 2),(1),(1),(1),(1),(1),(1);
 `
 	ps := New()
 	stmt, err := ps.ParseOneStmt(query, "", "")
@@ -527,6 +527,60 @@ LEFT JOIN t2
 SET a = 1,
     b = 2
 WHERE id = 1
+`
+	ps := New()
+	stmt, err := ps.ParseOneStmt(query, "", "")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	fmt.Println(stmt.Text())
+
+	var sb1 strings.Builder
+	if err = stmt.Restore(format1.NewRestoreCtx(format1.DefaultRestoreFlags, &sb1)); err != nil {
+		t.Fatalf("Restore 出错. %s", err.Error())
+	}
+	fmt.Println("Restore 语句:", sb1.String())
+
+	var sb2 strings.Builder
+	if err = stmt.Pretty(format1.NewRestoreCtx(format1.DefaultRestoreFlags, &sb2), 0, 4, " "); err != nil {
+		t.Fatalf("Pretty 出错. %s", err.Error())
+	}
+
+	fmt.Println("Pretty 语句:")
+	fmt.Println(sb2.String())
+}
+
+func Test_Pretty_GroupConcat(t *testing.T) {
+	query := `
+SELECT GROUP_CONCAT(id, ":"), GROUP_CONCAT(id) FROM t
+`
+	ps := New()
+	stmt, err := ps.ParseOneStmt(query, "", "")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	fmt.Println(stmt.Text())
+
+	var sb1 strings.Builder
+	if err = stmt.Restore(format1.NewRestoreCtx(format1.DefaultRestoreFlags, &sb1)); err != nil {
+		t.Fatalf("Restore 出错. %s", err.Error())
+	}
+	fmt.Println("Restore 语句:", sb1.String())
+
+	var sb2 strings.Builder
+	if err = stmt.Pretty(format1.NewRestoreCtx(format1.DefaultRestoreFlags, &sb2), 0, 4, " "); err != nil {
+		t.Fatalf("Pretty 出错. %s", err.Error())
+	}
+
+	fmt.Println("Pretty 语句:")
+	fmt.Println(sb2.String())
+}
+
+func Test_Pretty_GroupConcat_02(t *testing.T) {
+	query := `
+SELECT GROUP_CONCAT(DISTINCT v ORDER BY v ASC SEPARATOR ';') FROM t
 `
 	ps := New()
 	stmt, err := ps.ParseOneStmt(query, "", "")
