@@ -1266,6 +1266,24 @@ func (n *AlterTableSpec) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 			ctx.WriteKeyWord(" PARTITIONS ")
 			ctx.WritePlainf("%d", n.Num)
 		}
+	case AlterTableAlterPartition:
+		if len(n.PartitionNames) != 1 {
+			return errors.Errorf("Maybe partition options are combined.")
+		}
+
+		ctx.WriteKeyWord("ALTER PARTITION ")
+		ctx.WriteName(n.PartitionNames[0].O)
+		ctx.WritePlain(" ")
+
+		for i, spec := range n.PlacementSpecs {
+			if i != 0 {
+				ctx.WritePlain(", \n")
+			}
+			ctx.WritePlain(utils.GetIndent(level, indent, char))
+			if err := spec.Pretty(ctx, level+1, indent, char); err != nil {
+				return errors.Annotatef(err, "An error occurred while restore AlterTableSpec.PlacementSpecs[%d]", i)
+			}
+		}
 	case AlterTableCoalescePartitions:
 		ctx.WriteKeyWord("COALESCE PARTITION ")
 		if n.NoWriteToBinlog {
@@ -1458,6 +1476,16 @@ func (n *AlterTableSpec) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 			ctx.WriteKeyWord(" VISIBLE")
 		case IndexVisibilityInvisible:
 			ctx.WriteKeyWord(" INVISIBLE")
+		}
+	case AlterTablePlacement:
+		for i, spec := range n.PlacementSpecs {
+			if i != 0 {
+				ctx.WritePlain(", \n")
+			}
+			ctx.WritePlain(utils.GetIndent(level, indent, char))
+			if err := spec.Pretty(ctx, level+1, indent, char); err != nil {
+				return errors.Annotatef(err, "An error occurred while restore AlterTableSpec.PlacementSpecs[%d]", i)
+			}
 		}
 	default:
 		// TODO: not support
