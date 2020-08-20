@@ -1725,3 +1725,35 @@ func (n *FlashBackTableStmt) Pretty(ctx *format.RestoreCtx, level, indent int64,
 	}
 	return nil
 }
+
+func (n *PlacementSpec) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
+	switch n.Tp {
+	case PlacementAdd:
+		ctx.WriteKeyWord("ADD PLACEMENT ")
+	default:
+		return errors.Errorf("invalid PlacementActionType: %d", n.Tp)
+	}
+
+	ctx.WriteKeyWord("LABEL")
+	ctx.WritePlain("=")
+	ctx.WriteString(n.Labels)
+
+	ctx.WriteKeyWord(" ROLE")
+	ctx.WritePlain("=")
+	switch n.Role {
+	case PlacementRoleFollower:
+		ctx.WriteKeyWord("FOLLOWER")
+	case PlacementRoleLeader:
+		ctx.WriteKeyWord("LEADER")
+	case PlacementRoleLearner:
+		ctx.WriteKeyWord("LEARNER")
+	case PlacementRoleVoter:
+		ctx.WriteKeyWord("VOTER")
+	default:
+		return errors.Errorf("invalid PlacementRole: %d", n.Role)
+	}
+
+	ctx.WriteKeyWord(" COUNT")
+	ctx.WritePlainf("=%d", n.Count)
+	return nil
+}
