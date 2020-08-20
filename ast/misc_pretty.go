@@ -663,6 +663,46 @@ func (n *DropBindingStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, ch
 	return nil
 }
 
+// Restore implements Node interface.
+func (n *CreateStatisticsStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
+	ctx.WriteKeyWord("CREATE STATISTICS ")
+	if n.IfNotExists {
+		ctx.WriteKeyWord("IF NOT EXISTS ")
+	}
+	ctx.WriteName(n.StatsName)
+	switch n.StatsType {
+	case StatsTypeCardinality:
+		ctx.WriteKeyWord(" (cardinality) ")
+	case StatsTypeDependency:
+		ctx.WriteKeyWord(" (dependency) ")
+	case StatsTypeCorrelation:
+		ctx.WriteKeyWord(" (correlation) ")
+	}
+	ctx.WriteKeyWord("ON ")
+	if err := n.Table.Restore(ctx); err != nil {
+		return errors.Annotate(err, "An error occurred while restore CreateStatisticsStmt.Table")
+	}
+
+	ctx.WritePlain("(")
+	for i, col := range n.Columns {
+		if i != 0 {
+			ctx.WritePlain(", ")
+		}
+		if err := col.Restore(ctx); err != nil {
+			return errors.Annotatef(err, "An error occurred while restore CreateStatisticsStmt.Columns: [%v]", i)
+		}
+	}
+	ctx.WritePlain(")")
+	return nil
+}
+
+// Restore implements Node interface.
+func (n *DropStatisticsStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
+	ctx.WriteKeyWord("DROP STATISTICS ")
+	ctx.WriteName(n.StatsName)
+	return nil
+}
+
 func (n *DoStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	ctx.WriteKeyWord("DO ")
 	for i, v := range n.Exprs {
