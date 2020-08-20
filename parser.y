@@ -40,11 +40,11 @@ import (
 %}
 
 %union {
-	offset int // offset
-	item interface{}
-	ident string
-	expr ast.ExprNode
-	statement ast.StmtNode
+    offset int // offset
+    item interface{}
+    ident string
+    expr ast.ExprNode
+    statement ast.StmtNode
 }
 
 %token	<ident>
@@ -1183,12 +1183,11 @@ import (
 	BRIEBooleanOptionName                  "Name of a BRIE option which takes a boolean as input"
 	BRIEStringOptionName                   "Name of a BRIE option which takes a string as input"
 	BRIEKeywordOptionName                  "Name of a BRIE option which takes a case-insensitive string as input"
-	PlacementRole                          "Placement rules role constraint"
-	PlacementCountOpt                      "Placement rules count option"
-	PlacementLabelOpt                      "Placement rules label option"
-	PlacementRoleOpt                       "Placement rules role option"
-	PlacementRoleOptOrNone                 "Placement rules role option, or empty role"
-	PlacementOpts                          "Placement rules constraints"
+	PlacementCount                         "Placement rules count option"
+	PlacementLabelConstraints              "Placement rules label constraints option"
+	PlacementRole                          "Placement rules role option"
+	PlacementRoleOpt                       "Placement rules role option, optional"
+	PlacementOptions                       "Placement rules options"
 	PlacementSpec                          "Placement rules specification"
 	PlacementSpecList                      "Placement rules specifications"
 
@@ -1364,24 +1363,24 @@ AlterTableStmt:
 	}
 
 PlacementRole:
-	"FOLLOWER"
+	"ROLE" "=" "FOLLOWER"
 	{
 		$$ = ast.PlacementRoleFollower
 	}
-|	"LEADER"
+|	"ROLE" "=" "LEADER"
 	{
 		$$ = ast.PlacementRoleLeader
 	}
-|	"LEARNER"
+|	"ROLE" "=" "LEARNER"
 	{
 		$$ = ast.PlacementRoleLearner
 	}
-|	"VOTER"
+|	"ROLE" "=" "VOTER"
 	{
 		$$ = ast.PlacementRoleVoter
 	}
 
-PlacementCountOpt:
+PlacementCount:
 	"REPLICAS" "=" LengthNum
 	{
 		cnt := $3.(uint64)
@@ -1392,7 +1391,7 @@ PlacementCountOpt:
 		$$ = cnt
 	}
 
-PlacementLabelOpt:
+PlacementLabelConstraints:
 	"CONSTRAINTS" "=" stringLit
 	{
 		// [+|-]x=
@@ -1404,40 +1403,34 @@ PlacementLabelOpt:
 	}
 
 PlacementRoleOpt:
-	"ROLE" "=" PlacementRole
-	{
-		$$ = $3
-	}
-
-PlacementRoleOptOrNone:
 	{
 		$$ = ast.PlacementRoleNone
 	}
-|	PlacementRoleOpt
+|	PlacementRole
 	{
 		$$ = $1
 	}
 
-PlacementOpts:
-	PlacementCountOpt
+PlacementOptions:
+	PlacementCount
 	{
 		$$ = &ast.PlacementSpec{
 			Replicas: $1.(uint64),
 		}
 	}
-|	PlacementLabelOpt
+|	PlacementLabelConstraints
 	{
 		$$ = &ast.PlacementSpec{
 			Constraints: $1.(string),
 		}
 	}
-|	PlacementRoleOpt
+|	PlacementRole
 	{
 		$$ = &ast.PlacementSpec{
 			Role: $1.(ast.PlacementRole),
 		}
 	}
-|	PlacementOpts PlacementCountOpt
+|	PlacementOptions PlacementCount
 	{
 		spec := $1.(*ast.PlacementSpec)
 		if spec.Replicas > 0 {
@@ -1447,7 +1440,7 @@ PlacementOpts:
 		spec.Replicas = $2.(uint64)
 		$$ = spec
 	}
-|	PlacementOpts PlacementLabelOpt
+|	PlacementOptions PlacementLabelConstraints
 	{
 		spec := $1.(*ast.PlacementSpec)
 		if len(spec.Constraints) > 0 {
@@ -1457,7 +1450,7 @@ PlacementOpts:
 		spec.Constraints = $2.(string)
 		$$ = spec
 	}
-|	PlacementOpts PlacementRoleOpt
+|	PlacementOptions PlacementRole
 	{
 		spec := $1.(*ast.PlacementSpec)
 		if spec.Role != 0 {
@@ -1469,10 +1462,22 @@ PlacementOpts:
 	}
 
 PlacementSpec:
-	"ADD" "PLACEMENT" "POLICY" PlacementOpts
+	"ADD" "PLACEMENT" "POLICY" PlacementOptions
 	{
 		spec := $4.(*ast.PlacementSpec)
 		spec.Tp = ast.PlacementAdd
+		$$ = spec
+	}
+|	"ALTER" "PLACEMENT" "POLICY" PlacementOptions
+	{
+		spec := $4.(*ast.PlacementSpec)
+		spec.Tp = ast.PlacementAlter
+		$$ = spec
+	}
+|	"DROP" "PLACEMENT" "POLICY" PlacementRoleOpt
+	{
+		spec := &ast.PlacementSpec{Role: $4.(ast.PlacementRole)}
+		spec.Tp = ast.PlacementDrop
 		$$ = spec
 	}
 
@@ -1480,12 +1485,6 @@ PlacementSpecList:
 	PlacementSpec
 	{
 		$$ = []*ast.PlacementSpec{$1.(*ast.PlacementSpec)}
-	}
-|	"DROP" "PLACEMENT" "POLICY" PlacementRoleOptOrNone
-	{
-		spec := &ast.PlacementSpec{Role: $4.(ast.PlacementRole)}
-		spec.Tp = ast.PlacementDrop
-		$$ = spec
 	}
 |	PlacementSpecList ',' PlacementSpec
 	{
@@ -2656,9 +2655,9 @@ EnforcedOrNotOpt:
 |	EnforcedOrNot
 
 EnforcedOrNotOrNotNullOpt:
-	//	 This branch is needed to workaround the need of a lookahead of 2 for the grammar:
+	//   This branch is needed to workaround the need of a lookahead of 2 for the grammar:
 	//
-	//	  { [NOT] NULL | CHECK(...) [NOT] ENFORCED } ...
+	//    { [NOT] NULL | CHECK(...) [NOT] ENFORCED } ...
 	"NOT" "NULL"
 	{
 		$$ = 0
@@ -4211,12 +4210,12 @@ ExplainFormatType:
 /*******************************************************************
  * Backup / restore / import statements
  *
- *	BACKUP DATABASE [ * | db1, db2, db3 ] TO 'scheme://location' [ options... ]
- *	BACKUP TABLE [ db1.tbl1, db2.tbl2 ] TO 'scheme://location' [ options... ]
- *	RESTORE DATABASE [ * | db1, db2, db3 ] FROM 'scheme://location' [ options... ]
- *	RESTORE TABLE [ db1.tbl1, db2.tbl2 ] FROM 'scheme://location' [ options... ]
- *	IMPORT DATABASE [ * | db1, db2, db3 ] FROM 'scheme://location' [ options... ]
- *	IMPORT TABLE [ db1.tbl1, db2.tbl2 ] FROM 'scheme://location' [ options... ]
+ *  BACKUP DATABASE [ * | db1, db2, db3 ] TO 'scheme://location' [ options... ]
+ *  BACKUP TABLE [ db1.tbl1, db2.tbl2 ] TO 'scheme://location' [ options... ]
+ *  RESTORE DATABASE [ * | db1, db2, db3 ] FROM 'scheme://location' [ options... ]
+ *  RESTORE TABLE [ db1.tbl1, db2.tbl2 ] FROM 'scheme://location' [ options... ]
+ *  IMPORT DATABASE [ * | db1, db2, db3 ] FROM 'scheme://location' [ options... ]
+ *  IMPORT TABLE [ db1.tbl1, db2.tbl2 ] FROM 'scheme://location' [ options... ]
  */
 BRIEStmt:
 	"BACKUP" BRIETables "TO" stringLit BRIEOptions
@@ -11602,14 +11601,14 @@ LoadStatsStmt:
  *  Create Sequence Statement
  *
  *  Example:
- *	CREATE [TEMPORARY] SEQUENCE [IF NOT EXISTS] sequence_name
- *	[ INCREMENT [ BY | = ] increment ]
- *	[ MINVALUE [=] minvalue | NO MINVALUE | NOMINVALUE ]
- *	[ MAXVALUE [=] maxvalue | NO MAXVALUE | NOMAXVALUE ]
- *	[ START [ WITH | = ] start ]
- *	[ CACHE [=] cache | NOCACHE | NO CACHE]
- *	[ CYCLE | NOCYCLE | NO CYCLE]
- *	[table_options]
+ *  CREATE [TEMPORARY] SEQUENCE [IF NOT EXISTS] sequence_name
+ *  [ INCREMENT [ BY | = ] increment ]
+ *  [ MINVALUE [=] minvalue | NO MINVALUE | NOMINVALUE ]
+ *  [ MAXVALUE [=] maxvalue | NO MAXVALUE | NOMAXVALUE ]
+ *  [ START [ WITH | = ] start ]
+ *  [ CACHE [=] cache | NOCACHE | NO CACHE]
+ *  [ CYCLE | NOCYCLE | NO CYCLE]
+ *  [table_options]
  ********************************************************************************************/
 CreateSequenceStmt:
 	"CREATE" "SEQUENCE" IfNotExists TableName CreateSequenceOptionListOpt CreateTableOptionListOpt
@@ -11737,17 +11736,17 @@ DropSequenceStmt:
  * Index Advisor Statement
  *
  * INDEX ADVISE
- * 	[LOCAL]
- *	INFILE 'file_name'
- *	[MAX_MINUTES number]
- *	[MAX_IDXNUM
- *  	[PER_TABLE number]
- *  	[PER_DB number]
- *	]
- *	[LINES
- *  	[STARTING BY 'string']
- *  	[TERMINATED BY 'string']
- *	]
+ *  [LOCAL]
+ *  INFILE 'file_name'
+ *  [MAX_MINUTES number]
+ *  [MAX_IDXNUM
+ *      [PER_TABLE number]
+ *      [PER_DB number]
+ *  ]
+ *  [LINES
+ *      [STARTING BY 'string']
+ *      [TERMINATED BY 'string']
+ *  ]
  *******************************************************************/
 IndexAdviseStmt:
 	"INDEX" "ADVISE" LocalOpt "INFILE" stringLit MaxMinutesOpt MaxIndexNumOpt Lines
