@@ -3456,12 +3456,14 @@ type PlacementActionType int
 const (
 	PlacementAdd PlacementActionType = iota + 1
 	PlacementAlter
+	PlacementDrop
 )
 
 type PlacementRole int
 
 const (
-	PlacementRoleLeader PlacementRole = iota + 1
+	PlacementRoleNone PlacementRole = iota
+	PlacementRoleLeader
 	PlacementRoleFollower
 	PlacementRoleLearner
 	PlacementRoleVoter
@@ -3476,20 +3478,7 @@ type PlacementSpec struct {
 	Replicas    uint64
 }
 
-func (n *PlacementSpec) Restore(ctx *format.RestoreCtx) error {
-	switch n.Tp {
-	case PlacementAdd:
-		ctx.WriteKeyWord("ADD PLACEMENT POLICY ")
-	case PlacementAlter:
-		ctx.WriteKeyWord("ALTER PLACEMENT POLICY ")
-	default:
-		return errors.Errorf("invalid PlacementActionType: %d", n.Tp)
-	}
-
-	ctx.WriteKeyWord("CONSTRAINTS")
-	ctx.WritePlain("=")
-	ctx.WriteString(n.Constraints)
-
+func (n *PlacementSpec) restoreRole(ctx *format.RestoreCtx) error {
 	ctx.WriteKeyWord(" ROLE")
 	ctx.WritePlain("=")
 	switch n.Role {
@@ -3503,6 +3492,32 @@ func (n *PlacementSpec) Restore(ctx *format.RestoreCtx) error {
 		ctx.WriteKeyWord("VOTER")
 	default:
 		return errors.Errorf("invalid PlacementRole: %d", n.Role)
+	}
+	return nil
+}
+
+func (n *PlacementSpec) Restore(ctx *format.RestoreCtx) error {
+	switch n.Tp {
+	case PlacementAdd:
+		ctx.WriteKeyWord("ADD PLACEMENT POLICY ")
+	case PlacementAlter:
+		ctx.WriteKeyWord("ALTER PLACEMENT POLICY ")
+	case PlacementDrop:
+		ctx.WriteKeyWord("DROP PLACEMENT POLICY")
+		if n.Role != PlacementRoleNone {
+			return n.restoreRole(ctx)
+		}
+		return nil
+	default:
+		return errors.Errorf("invalid PlacementActionType: %d", n.Tp)
+	}
+
+	ctx.WriteKeyWord("CONSTRAINTS")
+	ctx.WritePlain("=")
+	ctx.WriteString(n.Constraints)
+
+	if err := n.restoreRole(ctx); err != nil {
+		return err
 	}
 
 	ctx.WriteKeyWord(" REPLICAS")

@@ -1730,6 +1730,14 @@ func (n *PlacementSpec) Pretty(ctx *format.RestoreCtx, level, indent int64, char
 	switch n.Tp {
 	case PlacementAdd:
 		ctx.WriteKeyWord("ADD PLACEMENT POLICY ")
+	case PlacementAlter:
+		ctx.WriteKeyWord("ALTER PLACEMENT POLICY ")
+	case PlacementDrop:
+		ctx.WriteKeyWord("DROP PLACEMENT POLICY")
+		if n.Role != PlacementRoleNone {
+			return n.restoreRole(ctx)
+		}
+		return nil
 	default:
 		return errors.Errorf("invalid PlacementActionType: %d", n.Tp)
 	}
@@ -1738,19 +1746,8 @@ func (n *PlacementSpec) Pretty(ctx *format.RestoreCtx, level, indent int64, char
 	ctx.WritePlain("=")
 	ctx.WriteString(n.Constraints)
 
-	ctx.WriteKeyWord(" ROLE")
-	ctx.WritePlain("=")
-	switch n.Role {
-	case PlacementRoleFollower:
-		ctx.WriteKeyWord("FOLLOWER")
-	case PlacementRoleLeader:
-		ctx.WriteKeyWord("LEADER")
-	case PlacementRoleLearner:
-		ctx.WriteKeyWord("LEARNER")
-	case PlacementRoleVoter:
-		ctx.WriteKeyWord("VOTER")
-	default:
-		return errors.Errorf("invalid PlacementRole: %d", n.Role)
+	if err := n.restoreRole(ctx); err != nil {
+		return err
 	}
 
 	ctx.WriteKeyWord(" REPLICAS")
