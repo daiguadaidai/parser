@@ -122,11 +122,11 @@ func (n *TableName) prettyIndexHints(ctx *format.RestoreCtx, level, indent int64
 func (n *IndexHint) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	indexHintType := ""
 	switch n.HintType {
-	case 1:
+	case HintUse:
 		indexHintType = "USE INDEX"
-	case 2:
+	case HintIgnore:
 		indexHintType = "IGNORE INDEX"
-	case 3:
+	case HintForce:
 		indexHintType = "FORCE INDEX"
 	default: // Prevent accidents
 		return errors.New("IndexHintType has an error while matching")
@@ -134,13 +134,13 @@ func (n *IndexHint) Pretty(ctx *format.RestoreCtx, level, indent int64, char str
 
 	indexHintScope := ""
 	switch n.HintScope {
-	case 1:
+	case HintForScan:
 		indexHintScope = ""
-	case 2:
+	case HintForJoin:
 		indexHintScope = " FOR JOIN"
-	case 3:
+	case HintForOrderBy:
 		indexHintScope = " FOR ORDER BY"
-	case 4:
+	case HintForGroupBy:
 		indexHintScope = " FOR GROUP BY"
 	default: // Prevent accidents
 		return errors.New("IndexHintScope has an error while matching")
