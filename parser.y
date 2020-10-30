@@ -40,11 +40,11 @@ import (
 %}
 
 %union {
-    offset int // offset
-    item interface{}
-    ident string
-    expr ast.ExprNode
-    statement ast.StmtNode
+	offset int // offset
+	item interface{}
+	ident string
+	expr ast.ExprNode
+	statement ast.StmtNode
 }
 
 %token	<ident>
@@ -2671,9 +2671,9 @@ EnforcedOrNotOpt:
 |	EnforcedOrNot
 
 EnforcedOrNotOrNotNullOpt:
-	//   This branch is needed to workaround the need of a lookahead of 2 for the grammar:
+	//	 This branch is needed to workaround the need of a lookahead of 2 for the grammar:
 	//
-	//    { [NOT] NULL | CHECK(...) [NOT] ENFORCED } ...
+	//	  { [NOT] NULL | CHECK(...) [NOT] ENFORCED } ...
 	"NOT" "NULL"
 	{
 		$$ = 0
@@ -4226,12 +4226,12 @@ ExplainFormatType:
 /*******************************************************************
  * Backup / restore / import statements
  *
- *  BACKUP DATABASE [ * | db1, db2, db3 ] TO 'scheme://location' [ options... ]
- *  BACKUP TABLE [ db1.tbl1, db2.tbl2 ] TO 'scheme://location' [ options... ]
- *  RESTORE DATABASE [ * | db1, db2, db3 ] FROM 'scheme://location' [ options... ]
- *  RESTORE TABLE [ db1.tbl1, db2.tbl2 ] FROM 'scheme://location' [ options... ]
- *  IMPORT DATABASE [ * | db1, db2, db3 ] FROM 'scheme://location' [ options... ]
- *  IMPORT TABLE [ db1.tbl1, db2.tbl2 ] FROM 'scheme://location' [ options... ]
+ *	BACKUP DATABASE [ * | db1, db2, db3 ] TO 'scheme://location' [ options... ]
+ *	BACKUP TABLE [ db1.tbl1, db2.tbl2 ] TO 'scheme://location' [ options... ]
+ *	RESTORE DATABASE [ * | db1, db2, db3 ] FROM 'scheme://location' [ options... ]
+ *	RESTORE TABLE [ db1.tbl1, db2.tbl2 ] FROM 'scheme://location' [ options... ]
+ *	IMPORT DATABASE [ * | db1, db2, db3 ] FROM 'scheme://location' [ options... ]
+ *	IMPORT TABLE [ db1.tbl1, db2.tbl2 ] FROM 'scheme://location' [ options... ]
  */
 BRIEStmt:
 	"BACKUP" BRIETables "TO" stringLit BRIEOptions
@@ -6876,8 +6876,6 @@ CastType:
 		} else {
 			x.Charset = parser.charset
 			x.Collate = parser.collation
-			x.Charset = mysql.DefaultCharset
-			x.Collate = mysql.DefaultCollationName
 		}
 		$$ = x
 	}
@@ -10189,9 +10187,10 @@ StringType:
 		x := types.NewFieldType(mysql.TypeEnum)
 		x.Elems = $3.([]string)
 		fieldLen := -1 // enum_flen = max(ele_flen)
-		for _, e := range x.Elems {
-			if len(e) > fieldLen {
-				fieldLen = len(e)
+		for i := range x.Elems {
+			x.Elems[i] = strings.TrimRight(x.Elems[i], " ")
+			if len(x.Elems[i]) > fieldLen {
+				fieldLen = len(x.Elems[i])
 			}
 		}
 		x.Flen = fieldLen
@@ -10207,8 +10206,9 @@ StringType:
 		x := types.NewFieldType(mysql.TypeSet)
 		x.Elems = $3.([]string)
 		fieldLen := len(x.Elems) - 1 // set_flen = sum(ele_flen) + number_of_ele - 1
-		for _, e := range x.Elems {
-			fieldLen += len(e)
+		for i := range x.Elems {
+			x.Elems[i] = strings.TrimRight(x.Elems[i], " ")
+			fieldLen += len(x.Elems[i])
 		}
 		x.Flen = fieldLen
 		opt := $5.(*ast.OptBinary)
@@ -11683,14 +11683,14 @@ LoadStatsStmt:
  *  Create Sequence Statement
  *
  *  Example:
- *  CREATE [TEMPORARY] SEQUENCE [IF NOT EXISTS] sequence_name
- *  [ INCREMENT [ BY | = ] increment ]
- *  [ MINVALUE [=] minvalue | NO MINVALUE | NOMINVALUE ]
- *  [ MAXVALUE [=] maxvalue | NO MAXVALUE | NOMAXVALUE ]
- *  [ START [ WITH | = ] start ]
- *  [ CACHE [=] cache | NOCACHE | NO CACHE]
- *  [ CYCLE | NOCYCLE | NO CYCLE]
- *  [table_options]
+ *	CREATE [TEMPORARY] SEQUENCE [IF NOT EXISTS] sequence_name
+ *	[ INCREMENT [ BY | = ] increment ]
+ *	[ MINVALUE [=] minvalue | NO MINVALUE | NOMINVALUE ]
+ *	[ MAXVALUE [=] maxvalue | NO MAXVALUE | NOMAXVALUE ]
+ *	[ START [ WITH | = ] start ]
+ *	[ CACHE [=] cache | NOCACHE | NO CACHE]
+ *	[ CYCLE | NOCYCLE | NO CYCLE]
+ *	[table_options]
  ********************************************************************************************/
 CreateSequenceStmt:
 	"CREATE" "SEQUENCE" IfNotExists TableName CreateSequenceOptionListOpt CreateTableOptionListOpt
@@ -11818,17 +11818,17 @@ DropSequenceStmt:
  * Index Advisor Statement
  *
  * INDEX ADVISE
- *  [LOCAL]
- *  INFILE 'file_name'
- *  [MAX_MINUTES number]
- *  [MAX_IDXNUM
- *      [PER_TABLE number]
- *      [PER_DB number]
- *  ]
- *  [LINES
- *      [STARTING BY 'string']
- *      [TERMINATED BY 'string']
- *  ]
+ * 	[LOCAL]
+ *	INFILE 'file_name'
+ *	[MAX_MINUTES number]
+ *	[MAX_IDXNUM
+ *  	[PER_TABLE number]
+ *  	[PER_DB number]
+ *	]
+ *	[LINES
+ *  	[STARTING BY 'string']
+ *  	[TERMINATED BY 'string']
+ *	]
  *******************************************************************/
 IndexAdviseStmt:
 	"INDEX" "ADVISE" LocalOpt "INFILE" stringLit MaxMinutesOpt MaxIndexNumOpt Lines
