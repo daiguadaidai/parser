@@ -142,7 +142,7 @@ func (n *FuncCastExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char 
 			return errors.Annotatef(err, "An error occurred while restore FuncCastExpr.Expr")
 		}
 		ctx.WriteKeyWord(" AS ")
-		n.Tp.RestoreAsCastType(ctx)
+		n.Tp.RestoreAsCastType(ctx, n.ExplicitCharSet)
 		ctx.WritePlain(")")
 	case CastConvertFunction:
 		ctx.WriteKeyWord("CONVERT")
@@ -151,7 +151,7 @@ func (n *FuncCastExpr) Pretty(ctx *format.RestoreCtx, level, indent int64, char 
 			return errors.Annotatef(err, "An error occurred while restore FuncCastExpr.Expr")
 		}
 		ctx.WritePlain(", ")
-		n.Tp.RestoreAsCastType(ctx)
+		n.Tp.RestoreAsCastType(ctx, n.ExplicitCharSet)
 		ctx.WritePlain(")")
 	case CastBinaryOperator:
 		ctx.WriteKeyWord("BINARY ")
