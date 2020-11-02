@@ -16,6 +16,7 @@ package parser_test
 import (
 	"bytes"
 	"fmt"
+	"github.com/daiguadaidai/parser/opcode"
 	"runtime"
 	"strings"
 	"testing"
@@ -5371,4 +5372,16 @@ func (s *testParserSuite) TestStatisticsOps(c *C) {
 	c.Assert(v.Columns[0].Name, Equals, model.CIStr{O: "a", L: "a"})
 	c.Assert(v.Columns[1].Name, Equals, model.CIStr{O: "b", L: "b"})
 	c.Assert(v.Columns[2].Name, Equals, model.CIStr{O: "c", L: "c"})
+}
+
+func (s *testParserSuite) TestHighNotPrecedenceMode(c *C) {
+	p := parser.New()
+
+	sms, _, err := p.Parse("SELECT NOT 1 BETWEEN -5 AND 5", "", "")
+	c.Assert(err, IsNil)
+	v, ok := sms[0].(*ast.SelectStmt)
+	c.Assert(ok, IsTrue)
+	v1, ok := v.Fields.Fields[0].Expr.(*ast.UnaryOperationExpr)
+	c.Assert(ok, IsTrue)
+	c.Assert(v1.Op, Equals, opcode.Not)
 }
