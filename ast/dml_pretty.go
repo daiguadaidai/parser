@@ -446,13 +446,18 @@ func (n *SelectStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 		}
 	}
 
-	switch n.LockTp {
-	case SelectLockInShareMode:
-		ctx.WriteKeyWord(" LOCK ")
-		ctx.WriteKeyWord(n.LockTp.String())
-	case SelectLockForUpdate, SelectLockForUpdateNoWait:
-		ctx.WritePlain(" ")
-		ctx.WriteKeyWord(n.LockTp.String())
+	if n.LockInfo != nil {
+		switch n.LockInfo.LockType {
+		case SelectLockInShareMode:
+			ctx.WriteKeyWord(" LOCK ")
+			ctx.WriteKeyWord(n.LockInfo.LockType.String())
+		case SelectLockForUpdate, SelectLockForUpdateNoWait:
+			ctx.WritePlain(" ")
+			ctx.WriteKeyWord(n.LockInfo.LockType.String())
+		case SelectLockForUpdateWaitN:
+			ctx.WriteKeyWord(" FOR UPDATE WAIT ")
+			ctx.WritePlainf("%d", n.LockInfo.WaitSec)
+		}
 	}
 
 	if n.SelectIntoOpt != nil {
@@ -465,28 +470,32 @@ func (n *SelectStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 }
 
 func (n *SetOprSelectList) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
-	for i, selectStmt := range n.Selects {
-		if i != 0 {
-			ctx.WriteKeyWord("\n")
-			switch *selectStmt.AfterSetOperator {
-			case Union:
-				ctx.WriteKeyWord(" UNION ")
-			case UnionAll:
-				ctx.WriteKeyWord(" UNION ALL ")
-			case Except:
-				ctx.WriteKeyWord(" EXCEPT ")
-			case Intersect:
-				ctx.WriteKeyWord(" INTERSECT ")
+	for i, stmt := range n.Selects {
+		switch selectStmt := stmt.(type) {
+		case *SelectStmt:
+			if i != 0 {
+				ctx.WriteKeyWord("\n")
+				ctx.WriteKeyWord(" " + selectStmt.AfterSetOperator.String() + " ")
+				ctx.WriteKeyWord("\n")
 			}
-			ctx.WriteKeyWord("\n")
-		}
-		if selectStmt.IsInBraces {
+			if selectStmt.IsInBraces {
+				ctx.WritePlain("(")
+			}
+			if err := selectStmt.Restore(ctx); err != nil {
+				return errors.Annotate(err, "An error occurred while restore SetOprSelectList.SelectStmt")
+			}
+			if selectStmt.IsInBraces {
+				ctx.WritePlain(")")
+			}
+		case *SetOprSelectList:
+			if i != 0 {
+				ctx.WriteKeyWord(" " + selectStmt.AfterSetOperator.String() + " ")
+			}
 			ctx.WritePlain("(")
-		}
-		if err := selectStmt.Pretty(ctx, level, indent, char); err != nil {
-			return errors.Annotate(err, "An error occurred while restore SetOprSelectList.SelectStmt")
-		}
-		if selectStmt.IsInBraces {
+			err := selectStmt.Restore(ctx)
+			if err != nil {
+				return err
+			}
 			ctx.WritePlain(")")
 		}
 	}
