@@ -1782,3 +1782,20 @@ func (n *PlacementSpec) Pretty(ctx *format.RestoreCtx, level, indent int64, char
 	ctx.WritePlainf("=%d", n.Replicas)
 	return nil
 }
+
+func (n *AlterSequenceStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
+	ctx.WriteKeyWord("ALTER SEQUENCE ")
+	if n.IfExists {
+		ctx.WriteKeyWord("IF EXISTS ")
+	}
+	if err := n.Name.Pretty(ctx, level, indent, char); err != nil {
+		return errors.Annotate(err, "An error occurred while restore AlterSequenceStmt.Table")
+	}
+	for i, option := range n.SeqOptions {
+		ctx.WritePlain(" ")
+		if err := option.Pretty(ctx, level, indent, char); err != nil {
+			return errors.Annotatef(err, "An error occurred while splicing AlterSequenceStmt SequenceOption: [%v]", i)
+		}
+	}
+	return nil
+}
