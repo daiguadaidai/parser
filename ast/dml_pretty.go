@@ -313,7 +313,7 @@ func (n *OrderByClause) Pretty(ctx *format.RestoreCtx, level, indent int64, char
 		if i != 0 {
 			ctx.WritePlain(",")
 		}
-		if err := item.Pretty(ctx, level, level, In, char); err != nil {
+		if err := item.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore OrderByClause.Items[%d]", i)
 		}
 	}
@@ -329,109 +329,125 @@ func (n *SelectStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char st
 			ctx.WritePlain(")")
 		}()
 	}
-	ctx.WriteKeyWord("SELECT ")
+	ctx.WriteKeyWord(n.Kind.String())
+	ctx.WritePlain(" ")
+	switch n.Kind {
+	case SelectStmtKindSelect:
+		if n.SelectStmtOpts.Priority > 0 {
+			ctx.WriteKeyWord(mysql.Priority2Str[n.SelectStmtOpts.Priority])
+			ctx.WritePlain(" ")
+		}
 
-	if n.SelectStmtOpts.Priority > 0 {
-		ctx.WriteKeyWord(mysql.Priority2Str[n.SelectStmtOpts.Priority])
-		ctx.WritePlain(" ")
-	}
+		if n.SelectStmtOpts.SQLSmallResult {
+			ctx.WriteKeyWord("SQL_SMALL_RESULT ")
+		}
 
-	if n.SelectStmtOpts.SQLSmallResult {
-		ctx.WriteKeyWord("SQL_SMALL_RESULT ")
-	}
+		if n.SelectStmtOpts.SQLBigResult {
+			ctx.WriteKeyWord("SQL_BIG_RESULT ")
+		}
 
-	if n.SelectStmtOpts.SQLBigResult {
-		ctx.WriteKeyWord("SQL_BIG_RESULT ")
-	}
+		if n.SelectStmtOpts.SQLBufferResult {
+			ctx.WriteKeyWord("SQL_BUFFER_RESULT ")
+		}
 
-	if n.SelectStmtOpts.SQLBufferResult {
-		ctx.WriteKeyWord("SQL_BUFFER_RESULT ")
-	}
+		if !n.SelectStmtOpts.SQLCache {
+			ctx.WriteKeyWord("SQL_NO_CACHE ")
+		}
 
-	if !n.SelectStmtOpts.SQLCache {
-		ctx.WriteKeyWord("SQL_NO_CACHE ")
-	}
+		if n.TableHints != nil && len(n.TableHints) != 0 {
+			ctx.WritePlain("/*+ ")
+			for i, tableHint := range n.TableHints {
+				if err := tableHint.Pretty(ctx, level, indent, char); err != nil {
+					return errors.Annotatef(err, "An error occurred while restore SelectStmt.TableHints[%d]", i)
+				}
+			}
+			ctx.WritePlain("*/ ")
+		}
 
-	if n.TableHints != nil && len(n.TableHints) != 0 {
-		ctx.WritePlain("/*+ ")
-		for i, tableHint := range n.TableHints {
-			if err := tableHint.Pretty(ctx, level, indent, char); err != nil {
-				return errors.Annotatef(err, "An error occurred while restore SelectStmt.TableHints[%d]", i)
+		ctx.WritePlain("\n")
+		ctx.WritePlain(utils.GetIndent(level, indent, char))
+		if n.Distinct {
+			ctx.WriteKeyWord("DISTINCT ")
+		}
+		if n.SelectStmtOpts.StraightJoin {
+			ctx.WriteKeyWord("STRAIGHT_JOIN ")
+		}
+		if n.Fields != nil {
+			for i, field := range n.Fields.Fields {
+				if i != 0 {
+					ctx.WritePlain(",")
+				}
+				if i != 0 && i%5 == 0 && len(n.Fields.Fields) != i {
+					ctx.WritePlain("\n")
+					ctx.WritePlain(utils.GetIndent(level, indent, char))
+				}
+				if err := field.Pretty(ctx, level, indent, char); err != nil {
+					return errors.Annotatef(err, "An error occurred while restore SelectStmt.Fields[%d]", i)
+				}
 			}
 		}
-		ctx.WritePlain("*/ ")
-	}
 
-	ctx.WritePlain("\n")
-	ctx.WritePlain(utils.GetIndent(level, indent, char))
-	if n.Distinct {
-		ctx.WriteKeyWord("DISTINCT ")
-	}
-	if n.SelectStmtOpts.StraightJoin {
-		ctx.WriteKeyWord("STRAIGHT_JOIN ")
-	}
-	if n.Fields != nil {
-		for i, field := range n.Fields.Fields {
-			if i != 0 {
-				ctx.WritePlain(",")
-			}
-			if i != 0 && i%5 == 0 && len(n.Fields.Fields) != i {
-				ctx.WritePlain("\n")
-				ctx.WritePlain(utils.GetIndent(level, indent, char))
-			}
-			if err := field.Pretty(ctx, level, indent, char); err != nil {
-				return errors.Annotatef(err, "An error occurred while restore SelectStmt.Fields[%d]", i)
+		if n.From != nil {
+			ctx.WriteKeyWord("\n")
+			ctx.WritePlain(utils.GetIndent(level-1, indent, char))
+			ctx.WriteKeyWord("FROM ")
+			if err := n.From.Pretty(ctx, level, indent, char); err != nil {
+				return errors.Annotate(err, "An error occurred while restore SelectStmt.From")
 			}
 		}
-	}
 
-	if n.From != nil {
-		ctx.WriteKeyWord("\n")
-		ctx.WritePlain(utils.GetIndent(level-1, indent, char))
-		ctx.WriteKeyWord("FROM ")
+		if n.From == nil && n.Where != nil {
+			ctx.WriteKeyWord("FROM DUAL")
+		}
+		if n.Where != nil {
+			ctx.WriteKeyWord("\n")
+			ctx.WritePlain(utils.GetIndent(level-1, indent, char))
+			ctx.WriteKeyWord(" WHERE ")
+			if err := n.Where.Pretty(ctx, level, indent, char); err != nil {
+				return errors.Annotate(err, "An error occurred while restore SelectStmt.Where")
+			}
+		}
+
+		if n.GroupBy != nil {
+			ctx.WriteKeyWord("\n")
+			ctx.WritePlain(utils.GetIndent(level-1, indent, char))
+			if err := n.GroupBy.Pretty(ctx, level, indent, char); err != nil {
+				return errors.Annotate(err, "An error occurred while restore SelectStmt.GroupBy")
+			}
+		}
+
+		if n.Having != nil {
+			ctx.WriteKeyWord("\n")
+			ctx.WritePlain(utils.GetIndent(level-1, indent, char))
+			if err := n.Having.Pretty(ctx, level, indent, char); err != nil {
+				return errors.Annotate(err, "An error occurred while restore SelectStmt.Having")
+			}
+		}
+
+		if n.WindowSpecs != nil {
+			ctx.WriteKeyWord("\n")
+			ctx.WritePlain(utils.GetIndent(level-1, indent, char))
+			ctx.WriteKeyWord("WINDOW ")
+			for i, windowsSpec := range n.WindowSpecs {
+				if i != 0 {
+					ctx.WritePlain(",")
+				}
+				if err := windowsSpec.Pretty(ctx, level, indent, char); err != nil {
+					return errors.Annotatef(err, "An error occurred while restore SelectStmt.WindowSpec[%d]", i)
+				}
+			}
+		}
+	case SelectStmtKindTable:
 		if err := n.From.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while restore SelectStmt.From")
 		}
-	}
-
-	if n.From == nil && n.Where != nil {
-		ctx.WriteKeyWord("FROM DUAL")
-	}
-	if n.Where != nil {
-		ctx.WriteKeyWord("\n")
-		ctx.WritePlain(utils.GetIndent(level-1, indent, char))
-		ctx.WriteKeyWord("WHERE ")
-		if err := n.Where.Pretty(ctx, level, indent, char); err != nil {
-			return errors.Annotate(err, "An error occurred while restore SelectStmt.Where")
-		}
-	}
-
-	if n.GroupBy != nil {
-		ctx.WriteKeyWord("\n")
-		ctx.WritePlain(utils.GetIndent(level-1, indent, char))
-		if err := n.GroupBy.Pretty(ctx, level, indent, char); err != nil {
-			return errors.Annotate(err, "An error occurred while restore SelectStmt.GroupBy")
-		}
-	}
-
-	if n.Having != nil {
-		ctx.WriteKeyWord("\n")
-		ctx.WritePlain(utils.GetIndent(level-1, indent, char))
-		if err := n.Having.Pretty(ctx, level, indent, char); err != nil {
-			return errors.Annotate(err, "An error occurred while restore SelectStmt.Having")
-		}
-	}
-
-	if n.WindowSpecs != nil {
-		ctx.WriteKeyWord("\n")
-		ctx.WritePlain(utils.GetIndent(level-1, indent, char))
-		ctx.WriteKeyWord("WINDOW ")
-		for i, windowsSpec := range n.WindowSpecs {
-			if i != 0 {
-				ctx.WritePlain(",")
+	case SelectStmtKindValues:
+		for i, v := range n.Lists {
+			if err := v.Pretty(ctx, level, indent, char); err != nil {
+				return errors.Annotatef(err, "An error occurred while restore SelectStmt.Lists[%d]", i)
 			}
-			if err := windowsSpec.Pretty(ctx, level, indent, char); err != nil {
-				return errors.Annotatef(err, "An error occurred while restore SelectStmt.WindowSpec[%d]", i)
+			if i != len(n.Lists)-1 {
+				ctx.WritePlain(", ")
 			}
 		}
 	}

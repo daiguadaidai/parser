@@ -418,9 +418,9 @@ func (n *CreateTableStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, ch
 	if err := n.Table.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred while splicing CreateTableStmt Table")
 	}
-	ctx.WritePlain(" ")
+
 	if n.ReferTable != nil {
-		ctx.WriteKeyWord("LIKE ")
+		ctx.WriteKeyWord(" LIKE ")
 		if err := n.ReferTable.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotate(err, "An error occurred while splicing CreateTableStmt ReferTable")
 		}
@@ -428,7 +428,7 @@ func (n *CreateTableStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, ch
 	lenCols := len(n.Cols)
 	lenConstraints := len(n.Constraints)
 	if lenCols+lenConstraints > 0 {
-		ctx.WritePlain("(\n")
+		ctx.WritePlain(" (\n")
 		for i, col := range n.Cols {
 			if i > 0 {
 				ctx.WritePlain(",\n")
