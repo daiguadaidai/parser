@@ -323,6 +323,12 @@ func (n *OrderByClause) Pretty(ctx *format.RestoreCtx, level, indent int64, char
 func (n *SelectStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
 	level += 1
 	ctx.WritePlain(utils.GetIndent(level-1, indent, char))
+	if n.IsInBraces {
+		ctx.WritePlain("(")
+		defer func() {
+			ctx.WritePlain(")")
+		}()
+	}
 	ctx.WriteKeyWord("SELECT ")
 
 	if n.SelectStmtOpts.Priority > 0 {
