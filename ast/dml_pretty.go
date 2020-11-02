@@ -585,17 +585,9 @@ func (n *LoadDataStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, char 
 			if i != 0 {
 				ctx.WritePlain(",")
 			}
-			if c.ColumnName != nil {
-				if err := c.ColumnName.Pretty(ctx, level, indent, char); err != nil {
-					return errors.Annotate(err, "An error occurred while restore LoadDataStmt.ColumnsAndUserVars")
-				}
+			if err := c.Pretty(ctx, level, indent, char); err != nil {
+				return errors.Annotate(err, "An error occurred while restore LoadDataStmt.ColumnsAndUserVars")
 			}
-			if c.UserVar != nil {
-				if err := c.UserVar.Pretty(ctx, level, indent, char); err != nil {
-					return errors.Annotate(err, "An error occurred while restore LoadDataStmt.ColumnsAndUserVars")
-				}
-			}
-
 		}
 		ctx.WritePlain(")")
 	}
@@ -1399,6 +1391,20 @@ func (n *SplitOption) Pretty(ctx *format.RestoreCtx, level, indent int64, char s
 			}
 		}
 		ctx.WritePlain(")")
+	}
+	return nil
+}
+
+func (n *ColumnNameOrUserVar) Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error {
+	if n.ColumnName != nil {
+		if err := n.ColumnName.Pretty(ctx, level, indent, char); err != nil {
+			return errors.Annotate(err, "An error occurred while restore ColumnNameOrUserVar.ColumnName")
+		}
+	}
+	if n.UserVar != nil {
+		if err := n.UserVar.Pretty(ctx, level, indent, char); err != nil {
+			return errors.Annotate(err, "An error occurred while restore ColumnNameOrUserVar.UserVar")
+		}
 	}
 	return nil
 }

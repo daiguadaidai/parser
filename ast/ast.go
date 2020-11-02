@@ -41,6 +41,10 @@ type Node interface {
 	Text() string
 	// SetText sets original text to the Node.
 	SetText(text string)
+	// SetOriginTextPosition set the start offset of this node in the origin text.
+	SetOriginTextPosition(offset int)
+	// OriginTextPosition get the start offset of this node in the origin text.
+	OriginTextPosition() int
 	// sql美化方法
 	Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error
 }
