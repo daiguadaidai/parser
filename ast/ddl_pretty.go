@@ -1071,7 +1071,7 @@ func (n *AlterTableSpec) Pretty(ctx *format.RestoreCtx, level, indent int64, cha
 		default:
 			for i, opt := range n.Options {
 				if i != 0 {
-					ctx.WritePlain(", ")
+					ctx.WritePlain(" ")
 				}
 				if err := opt.Pretty(ctx, level, indent, char); err != nil {
 					return errors.Annotatef(err, "An error occurred while restore AlterTableSpec.Options[%d]", i)
