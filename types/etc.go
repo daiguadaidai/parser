@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	"github.com/daiguadaidai/parser/mysql"
-	"github.com/daiguadaidai/parser/terror"
 )
 
 // IsTypeBlob returns a boolean indicating whether the tp is a blob type.
@@ -105,4 +104,4 @@ const (
 )
 
 // ErrInvalidDefault is returned when meet a invalid default value.
-var ErrInvalidDefault = terror.ClassTypes.New(mysql.ErrInvalidDefault, mysql.MySQLErrName[mysql.ErrInvalidDefault])
+var ErrInvalidDefault = terror.ClassTypes.NewStd(mysql.ErrInvalidDefault)

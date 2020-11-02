@@ -11,9 +11,10 @@ require (
 	github.com/cznic/y v0.0.0-20181122101901-b05e8c2e8d7b
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/pingcap/check v0.0.0-20200212061837-5e12011dc712
-	github.com/pingcap/errors v0.11.5-0.20200902104258-eba4f1d8f6de
+	github.com/pingcap/errors v0.11.5-0.20201021055732-210aacd3fd99
 	github.com/pingcap/log v0.0.0-20200511115504-543df19646ad
 	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
+	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/zap v1.15.0
 	golang.org/x/text v0.3.2
 )
