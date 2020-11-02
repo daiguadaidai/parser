@@ -633,11 +633,11 @@ func (n *CreateBindingStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, 
 		ctx.WriteKeyWord("SESSION ")
 	}
 	ctx.WriteKeyWord("BINDING FOR ")
-	if err := n.OriginSel.Pretty(ctx, level, indent, char); err != nil {
+	if err := n.OriginNode.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Trace(err)
 	}
 	ctx.WriteKeyWord(" USING ")
-	if err := n.HintedSel.Pretty(ctx, level, indent, char); err != nil {
+	if err := n.HintedNode.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Trace(err)
 	}
 	return nil
@@ -651,12 +651,12 @@ func (n *DropBindingStmt) Pretty(ctx *format.RestoreCtx, level, indent int64, ch
 		ctx.WriteKeyWord("SESSION ")
 	}
 	ctx.WriteKeyWord("BINDING FOR ")
-	if err := n.OriginSel.Pretty(ctx, level, indent, char); err != nil {
+	if err := n.OriginNode.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Trace(err)
 	}
-	if n.HintedSel != nil {
+	if n.HintedNode != nil {
 		ctx.WriteKeyWord(" USING ")
-		if err := n.HintedSel.Pretty(ctx, level, indent, char); err != nil {
+		if err := n.HintedNode.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Trace(err)
 		}
 	}
@@ -679,7 +679,7 @@ func (n *CreateStatisticsStmt) Pretty(ctx *format.RestoreCtx, level, indent int6
 		ctx.WriteKeyWord(" (correlation) ")
 	}
 	ctx.WriteKeyWord("ON ")
-	if err := n.Table.Restore(ctx); err != nil {
+	if err := n.Table.Pretty(ctx, level, indent, char); err != nil {
 		return errors.Annotate(err, "An error occurred while restore CreateStatisticsStmt.Table")
 	}
 
@@ -688,7 +688,7 @@ func (n *CreateStatisticsStmt) Pretty(ctx *format.RestoreCtx, level, indent int6
 		if i != 0 {
 			ctx.WritePlain(", ")
 		}
-		if err := col.Restore(ctx); err != nil {
+		if err := col.Pretty(ctx, level, indent, char); err != nil {
 			return errors.Annotatef(err, "An error occurred while restore CreateStatisticsStmt.Columns: [%v]", i)
 		}
 	}
