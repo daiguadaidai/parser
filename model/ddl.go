@@ -205,6 +205,7 @@ type Job struct {
 	Mu       sync.Mutex    `json:"-"`
 	Args     []interface{} `json:"-"`
 	// RawArgs : We must use json raw message to delay parsing special args.
+	CtxVars     []interface{}   `json:"-"`
 	RawArgs     json.RawMessage `json:"raw_args"`
 	SchemaState SchemaState     `json:"schema_state"`
 	// SnapshotVer means snapshot version for this job.
