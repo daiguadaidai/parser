@@ -1222,6 +1222,11 @@ func (n *TableOptimizerHint) Pretty(ctx *format.RestoreCtx, level, indent int64,
 		ctx.WriteString(hintData.From)
 		ctx.WritePlain(", ")
 		ctx.WriteString(hintData.To)
+	case "set_var":
+		hintData := n.HintData.(HintSetVar)
+		ctx.WriteString(hintData.VarName)
+		ctx.WritePlain(", ")
+		ctx.WriteString(hintData.Value)
 	}
 	ctx.WritePlain(")")
 	return nil
