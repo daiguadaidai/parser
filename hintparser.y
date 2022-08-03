@@ -18,8 +18,8 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/daiguadaidai/parser/ast"
-	"github.com/daiguadaidai/parser/model"
+	"github.com/pingcap/tidb/parser/ast"
+	"github.com/pingcap/tidb/parser/model"
 )
 
 %}
@@ -43,6 +43,7 @@ import (
 
 	/*yy:token "%c" */
 	hintIdentifier
+	hintInvalid    "a special token never used by parser, used by lexer to indicate error"
 
 	/*yy:token "@%c" */
 	hintSingleAtIdentifier "identifier with single leading at"
@@ -60,6 +61,7 @@ import (
 	hintBNL                 "BNL"
 	hintNoBNL               "NO_BNL"
 	hintHashJoin            "HASH_JOIN"
+	hintOrderedHashJoin     "ORDERED_HASH_JOIN"
 	hintNoHashJoin          "NO_HASH_JOIN"
 	hintMerge               "MERGE"
 	hintNoMerge             "NO_MERGE"
@@ -93,7 +95,6 @@ import (
 	hintReadFromStorage       "READ_FROM_STORAGE"
 	hintSMJoin                "MERGE_JOIN"
 	hintBCJoin                "BROADCAST_JOIN"
-	hintBCJoinPreferLocal     "BROADCAST_JOIN_LOCAL"
 	hintStreamAgg             "STREAM_AGG"
 	hintSwapJoinInputs        "SWAP_JOIN_INPUTS"
 	hintUseIndexMerge         "USE_INDEX_MERGE"
@@ -104,6 +105,10 @@ import (
 	hintUseCascades           "USE_CASCADES"
 	hintNthPlan               "NTH_PLAN"
 	hintLimitToCop            "LIMIT_TO_COP"
+	hintForceIndex            "FORCE_INDEX"
+	hintStraightJoin          "STRAIGHT_JOIN"
+	hintLeading               "LEADING"
+	hintSemiJoinRewrite       "SEMI_JOIN_REWRITE"
 
 	/* Other keywords */
 	hintOLAP            "OLAP"
@@ -526,19 +531,20 @@ UnsupportedTableLevelOptimizerHintName:
 |	"NO_BNL"
 /* HASH_JOIN is supported by TiDB */
 |	"NO_HASH_JOIN"
-|	"MERGE"
 |	"NO_MERGE"
 
 SupportedTableLevelOptimizerHintName:
 	"MERGE_JOIN"
 |	"BROADCAST_JOIN"
-|	"BROADCAST_JOIN_LOCAL"
 |	"INL_JOIN"
+|	"MERGE"
 |	"INL_HASH_JOIN"
 |	"SWAP_JOIN_INPUTS"
 |	"NO_SWAP_JOIN_INPUTS"
 |	"INL_MERGE_JOIN"
 |	"HASH_JOIN"
+|	"ORDERED_HASH_JOIN"
+|	"LEADING"
 
 UnsupportedIndexLevelOptimizerHintName:
 	"INDEX_MERGE"
@@ -554,6 +560,7 @@ SupportedIndexLevelOptimizerHintName:
 	"USE_INDEX"
 |	"IGNORE_INDEX"
 |	"USE_INDEX_MERGE"
+|	"FORCE_INDEX"
 
 SubqueryOptimizerHintName:
 	"SEMIJOIN"
@@ -578,6 +585,8 @@ NullaryHintName:
 |	"NO_INDEX_MERGE"
 |	"READ_CONSISTENT_REPLICA"
 |	"IGNORE_PLAN_CACHE"
+|	"STRAIGHT_JOIN"
+|	"SEMI_JOIN_REWRITE"
 
 HintQueryType:
 	"OLAP"
@@ -599,6 +608,7 @@ Identifier:
 |	"BNL"
 |	"NO_BNL"
 |	"HASH_JOIN"
+|	"ORDERED_HASH_JOIN"
 |	"NO_HASH_JOIN"
 |	"MERGE"
 |	"NO_MERGE"
@@ -632,7 +642,6 @@ Identifier:
 |	"READ_FROM_STORAGE"
 |	"MERGE_JOIN"
 |	"BROADCAST_JOIN"
-|	"BROADCAST_JOIN_LOCAL"
 |	"STREAM_AGG"
 |	"SWAP_JOIN_INPUTS"
 |	"USE_INDEX_MERGE"
@@ -642,6 +651,10 @@ Identifier:
 |	"TIME_RANGE"
 |	"USE_CASCADES"
 |	"NTH_PLAN"
+|	"FORCE_INDEX"
+|	"STRAIGHT_JOIN"
+|	"LEADING"
+|	"SEMI_JOIN_REWRITE"
 /* other keywords */
 |	"OLAP"
 |	"OLTP"

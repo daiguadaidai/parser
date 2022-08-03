@@ -15,14 +15,16 @@ package model
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/daiguadaidai/parser/auth"
-	"github.com/daiguadaidai/parser/mysql"
-	"github.com/daiguadaidai/parser/types"
 	"github.com/pingcap/errors"
+	"github.com/pingcap/tidb/parser/auth"
+	"github.com/pingcap/tidb/parser/charset"
+	"github.com/pingcap/tidb/parser/mysql"
+	"github.com/pingcap/tidb/parser/types"
 )
 
 // SchemaState is the state for schema elements.
@@ -36,14 +38,16 @@ const (
 	// StateWriteOnly means we can use any write operation on this schema element,
 	// but outer can't read the changed data.
 	StateWriteOnly
-	// StateReplica means we're waiting tiflash replica to be finished.
+	// StateWriteReorganization means we are re-organizing whole data after write only state.
 	StateWriteReorganization
 	// StateDeleteReorganization means we are re-organizing whole data after delete only state.
 	StateDeleteReorganization
 	// StatePublic means this schema element is ok for all write and read operations.
 	StatePublic
-	// StateReplica means we're waiting tiflash replica to be finished.
+	// StateReplicaOnly means we're waiting tiflash replica to be finished.
 	StateReplicaOnly
+	// StateGlobalTxnOnly means we can only use global txn for operator on this schema element
+	StateGlobalTxnOnly
 	/*
 	 *  Please add the new state at the end to keep the values consistent across versions.
 	 */
@@ -64,6 +68,8 @@ func (s SchemaState) String() string {
 		return "public"
 	case StateReplicaOnly:
 		return "replica only"
+	case StateGlobalTxnOnly:
+		return "global txn only"
 	default:
 		return "none"
 	}
@@ -105,9 +111,9 @@ type ColumnInfo struct {
 	GeneratedExprString string              `json:"generated_expr_string"`
 	GeneratedStored     bool                `json:"generated_stored"`
 	Dependences         map[string]struct{} `json:"dependences"`
-	types.FieldType     `json:"type"`
-	State               SchemaState `json:"state"`
-	Comment             string      `json:"comment"`
+	FieldType           types.FieldType     `json:"type"`
+	State               SchemaState         `json:"state"`
+	Comment             string              `json:"comment"`
 	// A hidden column is used internally(expression index) and are not accessible by users.
 	Hidden           bool `json:"hidden"`
 	*ChangeStateInfo `json:"change_state_info"`
@@ -125,18 +131,108 @@ func (c *ColumnInfo) Clone() *ColumnInfo {
 	return &nc
 }
 
+// GetType returns the type of ColumnInfo.
+func (c *ColumnInfo) GetType() byte {
+	return c.FieldType.GetType()
+}
+
+// GetFlag returns the flag of ColumnInfo.
+func (c *ColumnInfo) GetFlag() uint {
+	return c.FieldType.GetFlag()
+}
+
+// GetFlen returns the flen of ColumnInfo.
+func (c *ColumnInfo) GetFlen() int {
+	return c.FieldType.GetFlen()
+}
+
+// GetDecimal returns the decimal of ColumnInfo.
+func (c *ColumnInfo) GetDecimal() int {
+	return c.FieldType.GetDecimal()
+}
+
+// GetCharset returns the charset of ColumnInfo.
+func (c *ColumnInfo) GetCharset() string {
+	return c.FieldType.GetCharset()
+}
+
+// GetCollate returns the collation of ColumnInfo.
+func (c *ColumnInfo) GetCollate() string {
+	return c.FieldType.GetCollate()
+}
+
+// GetElems returns the elems of ColumnInfo.
+func (c *ColumnInfo) GetElems() []string {
+	return c.FieldType.GetElems()
+}
+
+// SetType set the type of ColumnInfo.
+func (c *ColumnInfo) SetType(tp byte) {
+	c.FieldType.SetType(tp)
+}
+
+// SetFlag set the flag of ColumnInfo.
+func (c *ColumnInfo) SetFlag(flag uint) {
+	c.FieldType.SetFlag(flag)
+}
+
+// AddFlag adds the flag of ColumnInfo.
+func (c *ColumnInfo) AddFlag(flag uint) {
+	c.FieldType.AddFlag(flag)
+}
+
+// AndFlag adds a flag to the column.
+func (c *ColumnInfo) AndFlag(flag uint) {
+	c.FieldType.AndFlag(flag)
+}
+
+// ToggleFlag flips the flag according to the value.
+func (c *ColumnInfo) ToggleFlag(flag uint) {
+	c.FieldType.ToggleFlag(flag)
+}
+
+// DelFlag removes the flag from the column's flag.
+func (c *ColumnInfo) DelFlag(flag uint) {
+	c.FieldType.DelFlag(flag)
+}
+
+// SetFlen sets the flen of ColumnInfo.
+func (c *ColumnInfo) SetFlen(flen int) {
+	c.FieldType.SetFlen(flen)
+}
+
+// SetDecimal sets the decimal of ColumnInfo.
+func (c *ColumnInfo) SetDecimal(decimal int) {
+	c.FieldType.SetDecimal(decimal)
+}
+
+// SetCharset sets charset of the ColumnInfo
+func (c *ColumnInfo) SetCharset(charset string) {
+	c.FieldType.SetCharset(charset)
+}
+
+// SetCollate sets the collation of the column.
+func (c *ColumnInfo) SetCollate(collate string) {
+	c.FieldType.SetCollate(collate)
+}
+
+// SetElems set the elements of enum column.
+func (c *ColumnInfo) SetElems(elems []string) {
+	c.FieldType.SetElems(elems)
+}
+
 // IsGenerated returns true if the column is generated column.
 func (c *ColumnInfo) IsGenerated() bool {
 	return len(c.GeneratedExprString) != 0
 }
 
-// SetOriginalDefaultValue sets the origin default value.
+// SetOriginDefaultValue sets the origin default value.
 // For mysql.TypeBit type, the default value storage format must be a string.
 // Other value such as int must convert to string format first.
 // The mysql.TypeBit type supports the null default value.
 func (c *ColumnInfo) SetOriginDefaultValue(value interface{}) error {
 	c.OriginDefaultValue = value
-	if c.Tp == mysql.TypeBit {
+	if c.GetType() == mysql.TypeBit {
 		if value == nil {
 			return nil
 		}
@@ -149,9 +245,9 @@ func (c *ColumnInfo) SetOriginDefaultValue(value interface{}) error {
 	return nil
 }
 
-// GetOriginalDefaultValue gets the origin default value.
+// GetOriginDefaultValue gets the origin default value.
 func (c *ColumnInfo) GetOriginDefaultValue() interface{} {
-	if c.Tp == mysql.TypeBit && c.OriginDefaultValueBit != nil {
+	if c.GetType() == mysql.TypeBit && c.OriginDefaultValueBit != nil {
 		// If the column type is BIT, both `OriginDefaultValue` and `DefaultValue` of ColumnInfo are corrupted,
 		// because the content before json.Marshal is INCONSISTENT with the content after json.Unmarshal.
 		return string(c.OriginDefaultValueBit)
@@ -162,7 +258,7 @@ func (c *ColumnInfo) GetOriginDefaultValue() interface{} {
 // SetDefaultValue sets the default value.
 func (c *ColumnInfo) SetDefaultValue(value interface{}) error {
 	c.DefaultValue = value
-	if c.Tp == mysql.TypeBit {
+	if c.GetType() == mysql.TypeBit {
 		// For mysql.TypeBit type, the default value storage format must be a string.
 		// Other value such as int must convert to string format first.
 		// The mysql.TypeBit type supports the null default value.
@@ -182,7 +278,7 @@ func (c *ColumnInfo) SetDefaultValue(value interface{}) error {
 // Default value use to stored in DefaultValue field, but now,
 // bit type default value will store in DefaultValueBit for fix bit default value decode/encode bug.
 func (c *ColumnInfo) GetDefaultValue() interface{} {
-	if c.Tp == mysql.TypeBit && c.DefaultValueBit != nil {
+	if c.GetType() == mysql.TypeBit && c.DefaultValueBit != nil {
 		return string(c.DefaultValueBit)
 	}
 	return c.DefaultValue
@@ -191,10 +287,10 @@ func (c *ColumnInfo) GetDefaultValue() interface{} {
 // GetTypeDesc gets the description for column type.
 func (c *ColumnInfo) GetTypeDesc() string {
 	desc := c.FieldType.CompactStr()
-	if mysql.HasUnsignedFlag(c.Flag) && c.Tp != mysql.TypeBit && c.Tp != mysql.TypeYear {
+	if mysql.HasUnsignedFlag(c.GetFlag()) && c.GetType() != mysql.TypeBit && c.GetType() != mysql.TypeYear {
 		desc += " unsigned"
 	}
-	if mysql.HasZerofillFlag(c.Flag) && c.Tp != mysql.TypeYear {
+	if mysql.HasZerofillFlag(c.GetFlag()) && c.GetType() != mysql.TypeYear {
 		desc += " zerofill"
 	}
 	return desc
@@ -208,7 +304,26 @@ func FindColumnInfo(cols []*ColumnInfo, name string) *ColumnInfo {
 			return col
 		}
 	}
+	return nil
+}
 
+// FindColumnInfoByID finds ColumnInfo in cols by id.
+func FindColumnInfoByID(cols []*ColumnInfo, id int64) *ColumnInfo {
+	for _, col := range cols {
+		if col.ID == id {
+			return col
+		}
+	}
+	return nil
+}
+
+// FindIndexInfoByID finds IndexInfo in indices by id.
+func FindIndexInfoByID(indices []*IndexInfo, id int64) *IndexInfo {
+	for _, idx := range indices {
+		if idx.ID == id {
+			return idx
+		}
+	}
 	return nil
 }
 
@@ -216,8 +331,14 @@ func FindColumnInfo(cols []*ColumnInfo, name string) *ColumnInfo {
 // for use of execution phase.
 const ExtraHandleID = -1
 
-// ExtraPartitionID is the column ID of column which store the partitionID decoded in global index values.
+// ExtraPidColID is the column ID of column which store the partitionID decoded in global index values.
 const ExtraPidColID = -2
+
+// ExtraPhysTblID is the column ID of column that should be filled in with the physical table id.
+// Primarily used for table partition dynamic prune mode, to return which partition (physical table id) the row came from.
+// Using a dedicated id for this, since in the future ExtraPidColID and ExtraPhysTblID may be used for the same request.
+// Must be after ExtraPidColID!
+const ExtraPhysTblID = -3
 
 const (
 	// TableInfoVersion0 means the table info version is 0.
@@ -244,16 +365,24 @@ const (
 	// However, the convert is missed in some scenarios before v2.1.9, so for all those tables prior to TableInfoVersion3, their
 	// charsets / collations will be converted to lower-case while loading from the storage.
 	TableInfoVersion3 = uint16(3)
+	// TableInfoVersion4 indicates that the auto_increment allocator in TiDB has been separated from
+	// _tidb_rowid allocator. This version is introduced to preserve the compatibility of old tables:
+	// the tables with version < TableInfoVersion4 still use a single allocator for auto_increment and _tidb_rowid.
+	// Also see https://github.com/pingcap/tidb/issues/982.
+	TableInfoVersion4 = uint16(4)
 
 	// CurrLatestTableInfoVersion means the latest table info in the current TiDB.
-	CurrLatestTableInfoVersion = TableInfoVersion3
+	CurrLatestTableInfoVersion = TableInfoVersion4
 )
 
 // ExtraHandleName is the name of ExtraHandle Column.
 var ExtraHandleName = NewCIStr("_tidb_rowid")
 
 // ExtraPartitionIdName is the name of ExtraPartitionId Column.
-var ExtraPartitionIdName = NewCIStr("_tidb_pid")
+var ExtraPartitionIdName = NewCIStr("_tidb_pid") //nolint:revive
+
+// ExtraPhysTblIdName is the name of ExtraPhysTblID Column.
+var ExtraPhysTblIdName = NewCIStr("_tidb_tid") //nolint:revive
 
 // TableInfo provides meta data describing a DB table.
 type TableInfo struct {
@@ -272,10 +401,14 @@ type TableInfo struct {
 	// IsCommonHandle is true when clustered index feature is
 	// enabled and the primary key is not a single integer column.
 	IsCommonHandle bool `json:"is_common_handle"`
+	// CommonHandleVersion is the version of the clustered index.
+	// 0 for the clustered index created == 5.0.0 RC.
+	// 1 for the clustered index created > 5.0.0 RC.
+	CommonHandleVersion uint16 `json:"common_handle_version"`
 
 	Comment         string `json:"comment"`
 	AutoIncID       int64  `json:"auto_inc_id"`
-	AutoIdCache     int64  `json:"auto_id_cache"`
+	AutoIdCache     int64  `json:"auto_id_cache"` //nolint:revive
 	AutoRandID      int64  `json:"auto_rand_id"`
 	MaxColumnID     int64  `json:"max_col_id"`
 	MaxIndexID      int64  `json:"max_idx_id"`
@@ -319,9 +452,70 @@ type TableInfo struct {
 	// TiFlashReplica means the TiFlash replica info.
 	TiFlashReplica *TiFlashReplicaInfo `json:"tiflash_replica"`
 
+	// TiFlashMode means the table's mode in TiFlash.
+	// Table's default mode is TiFlashModeNormal
+	TiFlashMode TiFlashMode `json:"tiflash_mode"`
+
 	// IsColumnar means the table is column-oriented.
 	// It's true when the engine of the table is TiFlash only.
 	IsColumnar bool `json:"is_columnar"`
+
+	TempTableType        `json:"temp_table_type"`
+	TableCacheStatusType `json:"cache_table_status"`
+	PlacementPolicyRef   *PolicyRefInfo `json:"policy_ref_info"`
+
+	// StatsOptions is used when do analyze/auto-analyze for each table
+	StatsOptions *StatsOptions `json:"stats_options"`
+
+	ExchangePartitionInfo *ExchangePartitionInfo `json:"exchange_partition_info"`
+}
+
+// TableCacheStatusType is the type of the table cache status
+type TableCacheStatusType int
+
+//revive:disable:exported
+const (
+	TableCacheStatusDisable TableCacheStatusType = iota
+	TableCacheStatusEnable
+	TableCacheStatusSwitching
+)
+
+//revive:enable:exported
+
+func (t TableCacheStatusType) String() string {
+	switch t {
+	case TableCacheStatusDisable:
+		return "disable"
+	case TableCacheStatusEnable:
+		return "enable"
+	case TableCacheStatusSwitching:
+		return "switching"
+	default:
+		return ""
+	}
+}
+
+// TempTableType is the type of the temp table
+type TempTableType byte
+
+//revive:disable:exported
+const (
+	TempTableNone TempTableType = iota
+	TempTableGlobal
+	TempTableLocal
+)
+
+//revive:enable:exported
+
+func (t TempTableType) String() string {
+	switch t {
+	case TempTableGlobal:
+		return "global"
+	case TempTableLocal:
+		return "local"
+	default:
+		return ""
+	}
 }
 
 // TableLockInfo provides meta data describing a table lock.
@@ -379,6 +573,7 @@ func (t TableLockState) String() string {
 type TableLockType byte
 
 const (
+	// TableLockNone means this table lock is absent.
 	TableLockNone TableLockType = iota
 	// TableLockRead means the session with this lock can read the table (but not write it).
 	// Multiple sessions can acquire a READ lock for the table at the same time.
@@ -386,6 +581,9 @@ const (
 	TableLockRead
 	// TableLockReadLocal is not supported.
 	TableLockReadLocal
+	// TableLockReadOnly is used to set a table into read-only status,
+	// when the session exits, it will not release its lock automatically.
+	TableLockReadOnly
 	// TableLockWrite means only the session with this lock has write/read permission.
 	// Only the session that holds the lock can access the table. No other session can access it until the lock is released.
 	TableLockWrite
@@ -401,10 +599,35 @@ func (t TableLockType) String() string {
 		return "READ"
 	case TableLockReadLocal:
 		return "READ LOCAL"
+	case TableLockReadOnly:
+		return "READ ONLY"
 	case TableLockWriteLocal:
 		return "WRITE LOCAL"
 	case TableLockWrite:
 		return "WRITE"
+	}
+	return ""
+}
+
+// TiFlashMode is the type of the table's mode in TiFlash.
+type TiFlashMode string
+
+//revive:disable:exported
+const (
+	// In order to be compatible with the old version without tiflash mode
+	// we set the normal mode(default mode) as empty
+	TiFlashModeNormal TiFlashMode = ""
+	TiFlashModeFast   TiFlashMode = "fast"
+)
+
+//revive:enable:exported
+
+func (t TiFlashMode) String() string {
+	switch t {
+	case TiFlashModeNormal:
+		return "NORMAL"
+	case TiFlashModeFast:
+		return "FAST"
 	}
 	return ""
 }
@@ -474,7 +697,7 @@ func (t *TableInfo) Clone() *TableInfo {
 // GetPkName will return the pk name if pk exists.
 func (t *TableInfo) GetPkName() CIStr {
 	for _, colInfo := range t.Columns {
-		if mysql.HasPriKeyFlag(colInfo.Flag) {
+		if mysql.HasPriKeyFlag(colInfo.GetFlag()) {
 			return colInfo.Name
 		}
 	}
@@ -485,28 +708,30 @@ func (t *TableInfo) GetPkName() CIStr {
 // Make sure PkIsHandle checked before call this method.
 func (t *TableInfo) GetPkColInfo() *ColumnInfo {
 	for _, colInfo := range t.Columns {
-		if mysql.HasPriKeyFlag(colInfo.Flag) {
+		if mysql.HasPriKeyFlag(colInfo.GetFlag()) {
 			return colInfo
 		}
 	}
 	return nil
 }
 
+// GetAutoIncrementColInfo gets the ColumnInfo of auto_increment column if exists.
 func (t *TableInfo) GetAutoIncrementColInfo() *ColumnInfo {
 	for _, colInfo := range t.Columns {
-		if mysql.HasAutoIncrementFlag(colInfo.Flag) {
+		if mysql.HasAutoIncrementFlag(colInfo.GetFlag()) {
 			return colInfo
 		}
 	}
 	return nil
 }
 
+// IsAutoIncColUnsigned checks whether the auto increment column is unsigned.
 func (t *TableInfo) IsAutoIncColUnsigned() bool {
 	col := t.GetAutoIncrementColInfo()
 	if col == nil {
 		return false
 	}
-	return mysql.HasUnsignedFlag(col.Flag)
+	return mysql.HasUnsignedFlag(col.GetFlag())
 }
 
 // ContainsAutoRandomBits indicates whether a table contains auto_random column.
@@ -519,7 +744,7 @@ func (t *TableInfo) IsAutoRandomBitColUnsigned() bool {
 	if !t.PKIsHandle || t.AutoRandomBits == 0 {
 		return false
 	}
-	return mysql.HasUnsignedFlag(t.GetPkColInfo().Flag)
+	return mysql.HasUnsignedFlag(t.GetPkColInfo().GetFlag())
 }
 
 // Cols returns the columns of the table in public state.
@@ -548,9 +773,63 @@ func (t *TableInfo) FindIndexByName(idxName string) *IndexInfo {
 	return nil
 }
 
+// FindPublicColumnByName finds the public column by name.
+func (t *TableInfo) FindPublicColumnByName(colNameL string) *ColumnInfo {
+	for _, col := range t.Cols() {
+		if col.Name.L == colNameL {
+			return col
+		}
+	}
+	return nil
+}
+
 // IsLocked checks whether the table was locked.
 func (t *TableInfo) IsLocked() bool {
 	return t.Lock != nil && len(t.Lock.Sessions) > 0
+}
+
+// MoveColumnInfo moves a column to another offset. It maintains the offsets of all affects columns and index columns,
+func (t *TableInfo) MoveColumnInfo(from, to int) {
+	if from == to {
+		return
+	}
+	updatedOffsets := make(map[int]int)
+	src := t.Columns[from]
+	if from < to {
+		for i := from; i < to; i++ {
+			t.Columns[i] = t.Columns[i+1]
+			t.Columns[i].Offset = i
+			updatedOffsets[i+1] = i
+		}
+	} else if from > to {
+		for i := from; i > to; i-- {
+			t.Columns[i] = t.Columns[i-1]
+			t.Columns[i].Offset = i
+			updatedOffsets[i-1] = i
+		}
+	}
+	t.Columns[to] = src
+	t.Columns[to].Offset = to
+	updatedOffsets[from] = to
+	for _, idx := range t.Indices {
+		for _, idxCol := range idx.Columns {
+			newOffset, ok := updatedOffsets[idxCol.Offset]
+			if ok {
+				idxCol.Offset = newOffset
+			}
+		}
+	}
+}
+
+// ClearPlacement clears all table and partitions' placement settings
+func (t *TableInfo) ClearPlacement() {
+	t.PlacementPolicyRef = nil
+	if t.Partition != nil {
+		for i := range t.Partition.Definitions {
+			def := &t.Partition.Definitions[i]
+			def.PlacementPolicyRef = nil
+		}
+	}
 }
 
 // NewExtraHandleColInfo mocks a column info for extra handle column.
@@ -559,9 +838,16 @@ func NewExtraHandleColInfo() *ColumnInfo {
 		ID:   ExtraHandleID,
 		Name: ExtraHandleName,
 	}
-	colInfo.Flag = mysql.PriKeyFlag
-	colInfo.Tp = mysql.TypeLonglong
-	colInfo.Flen, colInfo.Decimal = mysql.GetDefaultFieldLengthAndDecimal(mysql.TypeLonglong)
+
+	colInfo.SetFlag(mysql.PriKeyFlag | mysql.NotNullFlag)
+	colInfo.SetType(mysql.TypeLonglong)
+
+	flen, decimal := mysql.GetDefaultFieldLengthAndDecimal(mysql.TypeLonglong)
+	colInfo.SetFlen(flen)
+	colInfo.SetDecimal(decimal)
+
+	colInfo.SetCharset(charset.CharsetBin)
+	colInfo.SetCollate(charset.CollationBin)
 	return colInfo
 }
 
@@ -571,9 +857,72 @@ func NewExtraPartitionIDColInfo() *ColumnInfo {
 		ID:   ExtraPidColID,
 		Name: ExtraPartitionIdName,
 	}
-	colInfo.Tp = mysql.TypeLonglong
-	colInfo.Flen, colInfo.Decimal = mysql.GetDefaultFieldLengthAndDecimal(mysql.TypeLonglong)
+	colInfo.SetType(mysql.TypeLonglong)
+	flen, decimal := mysql.GetDefaultFieldLengthAndDecimal(mysql.TypeLonglong)
+	colInfo.SetFlen(flen)
+	colInfo.SetDecimal(decimal)
 	return colInfo
+}
+
+// NewExtraPhysTblIDColInfo mocks a column info for extra partition id column.
+func NewExtraPhysTblIDColInfo() *ColumnInfo {
+	colInfo := &ColumnInfo{
+		ID:   ExtraPhysTblID,
+		Name: ExtraPhysTblIdName,
+	}
+	colInfo.SetType(mysql.TypeLonglong)
+	flen, decimal := mysql.GetDefaultFieldLengthAndDecimal(mysql.TypeLonglong)
+	colInfo.SetFlen(flen)
+	colInfo.SetDecimal(decimal)
+	return colInfo
+}
+
+// GetPrimaryKey extract the primary key in a table and return `IndexInfo`
+// The returned primary key could be explicit or implicit.
+// If there is no explicit primary key in table,
+// the first UNIQUE INDEX on NOT NULL columns will be the implicit primary key.
+// For more information about implicit primary key, see
+// https://dev.mysql.com/doc/refman/8.0/en/invisible-indexes.html
+func (t *TableInfo) GetPrimaryKey() *IndexInfo {
+	var implicitPK *IndexInfo
+
+	for _, key := range t.Indices {
+		if key.Primary {
+			// table has explicit primary key
+			return key
+		}
+		// The case index without any columns should never happen, but still do a check here
+		if len(key.Columns) == 0 {
+			continue
+		}
+		// find the first unique key with NOT NULL columns
+		if implicitPK == nil && key.Unique {
+			// ensure all columns in unique key have NOT NULL flag
+			allColNotNull := true
+			skip := false
+			for _, idxCol := range key.Columns {
+				col := FindColumnInfo(t.Cols(), idxCol.Name.L)
+				// This index has a column in DeleteOnly state,
+				// or it is expression index (it defined on a hidden column),
+				// it can not be implicit PK, go to next index iterator
+				if col == nil || col.Hidden {
+					skip = true
+					break
+				}
+				if !mysql.HasNotNullFlag(col.GetFlag()) {
+					allColNotNull = false
+					break
+				}
+			}
+			if skip {
+				continue
+			}
+			if allColNotNull {
+				implicitPK = key
+			}
+		}
+	}
+	return implicitPK
 }
 
 // ColumnIsInIndex checks whether c is included in any indices of t.
@@ -588,6 +937,11 @@ func (t *TableInfo) ColumnIsInIndex(c *ColumnInfo) bool {
 	return false
 }
 
+// HasClusteredIndex checks whether the table has a clustered index.
+func (t *TableInfo) HasClusteredIndex() bool {
+	return t.PKIsHandle || t.IsCommonHandle
+}
+
 // IsView checks if TableInfo is a view.
 func (t *TableInfo) IsView() bool {
 	return t.View != nil
@@ -598,15 +952,23 @@ func (t *TableInfo) IsSequence() bool {
 	return t.Sequence != nil
 }
 
-// ViewAlgorithm is VIEW's SQL AlGORITHM characteristic.
+// IsBaseTable checks to see the table is neither a view or a sequence.
+func (t *TableInfo) IsBaseTable() bool {
+	return t.Sequence == nil && t.View == nil
+}
+
+// ViewAlgorithm is VIEW's SQL ALGORITHM characteristic.
 // See https://dev.mysql.com/doc/refman/5.7/en/view-algorithms.html
 type ViewAlgorithm int
 
+//revive:disable:exported
 const (
 	AlgorithmUndefined ViewAlgorithm = iota
 	AlgorithmMerge
 	AlgorithmTemptable
 )
+
+//revive:enable:exported
 
 func (v *ViewAlgorithm) String() string {
 	switch *v {
@@ -625,10 +987,13 @@ func (v *ViewAlgorithm) String() string {
 // See https://dev.mysql.com/doc/refman/5.7/en/create-view.html
 type ViewSecurity int
 
+//revive:disable:exported
 const (
 	SecurityDefiner ViewSecurity = iota
 	SecurityInvoker
 )
+
+//revive:enable:exported
 
 func (v *ViewSecurity) String() string {
 	switch *v {
@@ -645,10 +1010,13 @@ func (v *ViewSecurity) String() string {
 // See https://dev.mysql.com/doc/refman/5.7/en/view-check-option.html
 type ViewCheckOption int
 
+//revive:disable:exported
 const (
 	CheckOptionLocal ViewCheckOption = iota
 	CheckOptionCascaded
 )
+
+//revive:enable:exported
 
 func (v *ViewCheckOption) String() string {
 	switch *v {
@@ -661,6 +1029,7 @@ func (v *ViewCheckOption) String() string {
 	}
 }
 
+//revive:disable:exported
 // ViewInfo provides meta data describing a DB view.
 type ViewInfo struct {
 	Algorithm   ViewAlgorithm      `json:"view_algorithm"`
@@ -697,16 +1066,18 @@ type SequenceInfo struct {
 	Comment    string `json:"sequence_comment"`
 }
 
+//revive:enable:exported
+
 // PartitionType is the type for PartitionInfo
 type PartitionType int
 
 // Partition types.
 const (
 	PartitionTypeRange      PartitionType = 1
-	PartitionTypeHash                     = 2
-	PartitionTypeList                     = 3
-	PartitionTypeKey                      = 4
-	PartitionTypeSystemTime               = 5
+	PartitionTypeHash       PartitionType = 2
+	PartitionTypeList       PartitionType = 3
+	PartitionTypeKey        PartitionType = 4
+	PartitionTypeSystemTime PartitionType = 5
 )
 
 func (p PartitionType) String() string {
@@ -724,7 +1095,13 @@ func (p PartitionType) String() string {
 	default:
 		return ""
 	}
+}
 
+// ExchangePartitionInfo provides exchange partition info.
+type ExchangePartitionInfo struct {
+	ExchangePartitionFlag  bool  `json:"exchange_partition_flag"`
+	ExchangePartitionID    int64 `json:"exchange_partition_id"`
+	ExchangePartitionDefID int64 `json:"exchange_partition_def_id"`
 }
 
 // PartitionInfo provides table partition info.
@@ -743,26 +1120,107 @@ type PartitionInfo struct {
 	AddingDefinitions []PartitionDefinition `json:"adding_definitions"`
 	// DroppingDefinitions is filled when dropping a partition that is in the mid state.
 	DroppingDefinitions []PartitionDefinition `json:"dropping_definitions"`
+	States              []PartitionState      `json:"states"`
 	Num                 uint64                `json:"num"`
+}
+
+// Clone clones itself.
+func (pi *PartitionInfo) Clone() *PartitionInfo {
+	newPi := *pi
+	newPi.Columns = make([]CIStr, len(pi.Columns))
+	copy(newPi.Columns, pi.Columns)
+
+	newPi.Definitions = make([]PartitionDefinition, len(pi.Definitions))
+	for i := range pi.Definitions {
+		newPi.Definitions[i] = pi.Definitions[i].Clone()
+	}
+
+	newPi.AddingDefinitions = make([]PartitionDefinition, len(pi.AddingDefinitions))
+	for i := range pi.AddingDefinitions {
+		newPi.AddingDefinitions[i] = pi.AddingDefinitions[i].Clone()
+	}
+
+	newPi.DroppingDefinitions = make([]PartitionDefinition, len(pi.DroppingDefinitions))
+	for i := range pi.DroppingDefinitions {
+		newPi.DroppingDefinitions[i] = pi.DroppingDefinitions[i].Clone()
+	}
+
+	return &newPi
 }
 
 // GetNameByID gets the partition name by ID.
 func (pi *PartitionInfo) GetNameByID(id int64) string {
-	for _, def := range pi.Definitions {
-		if id == def.ID {
-			return def.Name.L
+	definitions := pi.Definitions
+	// do not convert this loop to `for _, def := range definitions`.
+	// see https://github.com/pingcap/parser/pull/1072 for the benchmark.
+	for i := range definitions {
+		if id == definitions[i].ID {
+			return definitions[i].Name.O
 		}
 	}
 	return ""
 }
 
+// GetStateByID gets the partition state by ID.
+func (pi *PartitionInfo) GetStateByID(id int64) SchemaState {
+	for _, pstate := range pi.States {
+		if pstate.ID == id {
+			return pstate.State
+		}
+	}
+	return StatePublic
+}
+
+// SetStateByID sets the state of the partition by ID.
+func (pi *PartitionInfo) SetStateByID(id int64, state SchemaState) {
+	newState := PartitionState{ID: id, State: state}
+	for i, pstate := range pi.States {
+		if pstate.ID == id {
+			pi.States[i] = newState
+			return
+		}
+	}
+	if pi.States == nil {
+		pi.States = make([]PartitionState, 0, 1)
+	}
+	pi.States = append(pi.States, newState)
+}
+
+// GCPartitionStates cleans up the partition state.
+func (pi *PartitionInfo) GCPartitionStates() {
+	if len(pi.States) < 1 {
+		return
+	}
+	newStates := make([]PartitionState, 0, len(pi.Definitions))
+	for _, state := range pi.States {
+		found := false
+		for _, def := range pi.Definitions {
+			if def.ID == state.ID {
+				found = true
+				break
+			}
+		}
+		if found {
+			newStates = append(newStates, state)
+		}
+	}
+	pi.States = newStates
+}
+
+// PartitionState is the state of the partition.
+type PartitionState struct {
+	ID    int64       `json:"id"`
+	State SchemaState `json:"state"`
+}
+
 // PartitionDefinition defines a single partition.
 type PartitionDefinition struct {
-	ID       int64      `json:"id"`
-	Name     CIStr      `json:"name"`
-	LessThan []string   `json:"less_than"`
-	InValues [][]string `json:"in_values"`
-	Comment  string     `json:"comment,omitempty"`
+	ID                 int64          `json:"id"`
+	Name               CIStr          `json:"name"`
+	LessThan           []string       `json:"less_than"`
+	InValues           [][]string     `json:"in_values"`
+	PlacementPolicyRef *PolicyRefInfo `json:"policy_ref_info"`
+	Comment            string         `json:"comment,omitempty"`
 }
 
 // Clone clones ConstraintInfo.
@@ -776,8 +1234,9 @@ func (ci *PartitionDefinition) Clone() PartitionDefinition {
 // FindPartitionDefinitionByName finds PartitionDefinition by name.
 func (t *TableInfo) FindPartitionDefinitionByName(partitionDefinitionName string) *PartitionDefinition {
 	lowConstrName := strings.ToLower(partitionDefinitionName)
-	for i, pd := range t.Partition.Definitions {
-		if pd.Name.L == lowConstrName {
+	definitions := t.Partition.Definitions
+	for i := range definitions {
+		if definitions[i].Name.L == lowConstrName {
 			return &t.Partition.Definitions[i]
 		}
 	}
@@ -799,6 +1258,30 @@ func (i *IndexColumn) Clone() *IndexColumn {
 	ni := *i
 	return &ni
 }
+
+// PrimaryKeyType is the type of primary key.
+// Available values are 'clustered', 'nonclustered', and ''(default).
+type PrimaryKeyType int8
+
+func (p PrimaryKeyType) String() string {
+	switch p {
+	case PrimaryKeyTypeClustered:
+		return "CLUSTERED"
+	case PrimaryKeyTypeNonClustered:
+		return "NONCLUSTERED"
+	default:
+		return ""
+	}
+}
+
+//revive:disable:exported
+const (
+	PrimaryKeyTypeDefault PrimaryKeyType = iota
+	PrimaryKeyTypeClustered
+	PrimaryKeyTypeNonClustered
+)
+
+//revive:enable:exported
 
 // IndexType is the type of index
 type IndexType int
@@ -862,6 +1345,32 @@ func (index *IndexInfo) HasPrefixIndex() bool {
 	return false
 }
 
+// HasColumnInIndexColumns checks whether the index contains the column with the specified ID.
+func (index *IndexInfo) HasColumnInIndexColumns(tblInfo *TableInfo, colID int64) bool {
+	for _, ic := range index.Columns {
+		if tblInfo.Columns[ic.Offset].ID == colID {
+			return true
+		}
+	}
+	return false
+}
+
+// FindColumnByName finds the index column with the specified name.
+func (index *IndexInfo) FindColumnByName(nameL string) *IndexColumn {
+	_, ret := FindIndexColumnByName(index.Columns, nameL)
+	return ret
+}
+
+// FindIndexColumnByName finds IndexColumn by name. When IndexColumn is not found, returns (-1, nil).
+func FindIndexColumnByName(indexCols []*IndexColumn, nameL string) (int, *IndexColumn) {
+	for i, ic := range indexCols {
+		if ic.Name.L == nameL {
+			return i, ic
+		}
+	}
+	return -1, nil
+}
+
 // ConstraintInfo provides meta data describing check-expression constraint.
 type ConstraintInfo struct {
 	ID             int64       `json:"id"`
@@ -894,6 +1403,24 @@ func (t *TableInfo) FindConstraintInfoByName(constrName string) *ConstraintInfo 
 	return nil
 }
 
+// FindIndexNameByID finds index name by id.
+func (t *TableInfo) FindIndexNameByID(id int64) string {
+	indexInfo := FindIndexInfoByID(t.Indices, id)
+	if indexInfo != nil {
+		return indexInfo.Name.L
+	}
+	return ""
+}
+
+// FindColumnNameByID finds column name by id.
+func (t *TableInfo) FindColumnNameByID(id int64) string {
+	colInfo := FindColumnInfoByID(t.Columns, id)
+	if colInfo != nil {
+		return colInfo.Name.L
+	}
+	return ""
+}
+
 // FKInfo provides meta data describing a foreign key constraint.
 type FKInfo struct {
 	ID       int64       `json:"id"`
@@ -920,12 +1447,13 @@ func (fk *FKInfo) Clone() *FKInfo {
 
 // DBInfo provides meta data describing a DB.
 type DBInfo struct {
-	ID      int64        `json:"id"`      // Database ID
-	Name    CIStr        `json:"db_name"` // DB name.
-	Charset string       `json:"charset"`
-	Collate string       `json:"collate"`
-	Tables  []*TableInfo `json:"-"` // Tables in the DB.
-	State   SchemaState  `json:"state"`
+	ID                 int64          `json:"id"`      // Database ID
+	Name               CIStr          `json:"db_name"` // DB name.
+	Charset            string         `json:"charset"`
+	Collate            string         `json:"collate"`
+	Tables             []*TableInfo   `json:"-"` // Tables in the DB.
+	State              SchemaState    `json:"state"`
+	PlacementPolicyRef *PolicyRefInfo `json:"policy_ref_info"`
 }
 
 // Clone clones DBInfo.
@@ -944,6 +1472,11 @@ func (db *DBInfo) Copy() *DBInfo {
 	newInfo.Tables = make([]*TableInfo, len(db.Tables))
 	copy(newInfo.Tables, db.Tables)
 	return &newInfo
+}
+
+// LessDBInfo is used for sorting DBInfo by DBInfo.Name.
+func LessDBInfo(a *DBInfo, b *DBInfo) bool {
+	return a.Name.L < b.Name.L
 }
 
 // CIStr is case insensitive string.
@@ -983,8 +1516,196 @@ func (cis *CIStr) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// TableColumnID is composed by table ID and column ID.
-type TableColumnID struct {
-	TableID  int64
-	ColumnID int64
+// TableItemID is composed by table ID and column/index ID
+type TableItemID struct {
+	TableID int64
+	ID      int64
+	IsIndex bool
+}
+
+// PolicyRefInfo is the struct to refer the placement policy.
+type PolicyRefInfo struct {
+	ID   int64 `json:"id"`
+	Name CIStr `json:"name"`
+}
+
+// PlacementSettings is the settings of the placement
+type PlacementSettings struct {
+	PrimaryRegion       string `json:"primary_region"`
+	Regions             string `json:"regions"`
+	Learners            uint64 `json:"learners"`
+	Followers           uint64 `json:"followers"`
+	Voters              uint64 `json:"voters"`
+	Schedule            string `json:"schedule"`
+	Constraints         string `json:"constraints"`
+	LeaderConstraints   string `json:"leader_constraints"`
+	LearnerConstraints  string `json:"learner_constraints"`
+	FollowerConstraints string `json:"follower_constraints"`
+	VoterConstraints    string `json:"voter_constraints"`
+}
+
+// PolicyInfo is the struct to store the placement policy.
+type PolicyInfo struct {
+	*PlacementSettings
+	ID    int64       `json:"id"`
+	Name  CIStr       `json:"name"`
+	State SchemaState `json:"state"`
+}
+
+// Clone clones PolicyInfo.
+func (p *PolicyInfo) Clone() *PolicyInfo {
+	cloned := *p
+	cloned.PlacementSettings = p.PlacementSettings.Clone()
+	return &cloned
+}
+
+func writeSettingItemToBuilder(sb *strings.Builder, item string) {
+	if sb.Len() != 0 {
+		sb.WriteString(" ")
+	}
+	sb.WriteString(item)
+}
+
+func (p *PlacementSettings) String() string {
+	sb := new(strings.Builder)
+	if len(p.PrimaryRegion) > 0 {
+		writeSettingItemToBuilder(sb, fmt.Sprintf("PRIMARY_REGION=\"%s\"", p.PrimaryRegion))
+	}
+
+	if len(p.Regions) > 0 {
+		writeSettingItemToBuilder(sb, fmt.Sprintf("REGIONS=\"%s\"", p.Regions))
+	}
+
+	if len(p.Schedule) > 0 {
+		writeSettingItemToBuilder(sb, fmt.Sprintf("SCHEDULE=\"%s\"", p.Schedule))
+	}
+
+	if len(p.Constraints) > 0 {
+		writeSettingItemToBuilder(sb, fmt.Sprintf("CONSTRAINTS=\"%s\"", p.Constraints))
+	}
+
+	if len(p.LeaderConstraints) > 0 {
+		writeSettingItemToBuilder(sb, fmt.Sprintf("LEADER_CONSTRAINTS=\"%s\"", p.LeaderConstraints))
+	}
+
+	if p.Voters > 0 {
+		writeSettingItemToBuilder(sb, fmt.Sprintf("VOTERS=%d", p.Voters))
+	}
+
+	if len(p.VoterConstraints) > 0 {
+		writeSettingItemToBuilder(sb, fmt.Sprintf("VOTER_CONSTRAINTS=\"%s\"", p.VoterConstraints))
+	}
+
+	if p.Followers > 0 {
+		writeSettingItemToBuilder(sb, fmt.Sprintf("FOLLOWERS=%d", p.Followers))
+	}
+
+	if len(p.FollowerConstraints) > 0 {
+		writeSettingItemToBuilder(sb, fmt.Sprintf("FOLLOWER_CONSTRAINTS=\"%s\"", p.FollowerConstraints))
+	}
+
+	if p.Learners > 0 {
+		writeSettingItemToBuilder(sb, fmt.Sprintf("LEARNERS=%d", p.Learners))
+	}
+
+	if len(p.LearnerConstraints) > 0 {
+		writeSettingItemToBuilder(sb, fmt.Sprintf("LEARNER_CONSTRAINTS=\"%s\"", p.LearnerConstraints))
+	}
+
+	return sb.String()
+}
+
+// Clone clones the placement settings.
+func (p *PlacementSettings) Clone() *PlacementSettings {
+	cloned := *p
+	return &cloned
+}
+
+// StatsOptions is the struct to store the stats options.
+type StatsOptions struct {
+	*StatsWindowSettings
+	AutoRecalc   bool         `json:"auto_recalc"`
+	ColumnChoice ColumnChoice `json:"column_choice"`
+	ColumnList   []CIStr      `json:"column_list"`
+	SampleNum    uint64       `json:"sample_num"`
+	SampleRate   float64      `json:"sample_rate"`
+	Buckets      uint64       `json:"buckets"`
+	TopN         uint64       `json:"topn"`
+	Concurrency  uint         `json:"concurrency"`
+}
+
+// NewStatsOptions creates a new StatsOptions.
+func NewStatsOptions() *StatsOptions {
+	return &StatsOptions{
+		AutoRecalc:   true,
+		ColumnChoice: DefaultChoice,
+		ColumnList:   []CIStr{},
+		SampleNum:    uint64(0),
+		SampleRate:   0.0,
+		Buckets:      uint64(0),
+		TopN:         uint64(0),
+		Concurrency:  uint(0),
+	}
+}
+
+// ColumnChoice is the type of the column choice.
+type ColumnChoice byte
+
+//revive:disable:exported
+const (
+	DefaultChoice ColumnChoice = iota
+	AllColumns
+	PredicateColumns
+	ColumnList
+)
+
+//revive:enable:exported
+
+func (s ColumnChoice) String() string {
+	switch s {
+	case AllColumns:
+		return "ALL"
+	case PredicateColumns:
+		return "PREDICATE"
+	case ColumnList:
+		return "LIST"
+	default:
+		return "DEFAULT"
+	}
+}
+
+// StatsWindowSettings is the settings of the stats window.
+type StatsWindowSettings struct {
+	WindowStart    time.Time        `json:"window_start"`
+	WindowEnd      time.Time        `json:"window_end"`
+	RepeatType     WindowRepeatType `json:"repeat_type"`
+	RepeatInterval uint             `json:"repeat_interval"`
+}
+
+// WindowRepeatType is the type of the window repeat.
+type WindowRepeatType byte
+
+//revive:disable:exported
+const (
+	Never WindowRepeatType = iota
+	Day
+	Week
+	Month
+)
+
+//revive:enable:exported
+
+func (s WindowRepeatType) String() string {
+	switch s {
+	case Never:
+		return "Never"
+	case Day:
+		return "Day"
+	case Week:
+		return "Week"
+	case Month:
+		return "Month"
+	default:
+		return ""
+	}
 }

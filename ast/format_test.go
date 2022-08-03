@@ -3,22 +3,18 @@ package ast_test
 import (
 	"bytes"
 	"fmt"
+	"testing"
 
-	"github.com/daiguadaidai/parser"
-	"github.com/daiguadaidai/parser/ast"
-	. "github.com/pingcap/check"
+	"github.com/pingcap/tidb/parser"
+	"github.com/pingcap/tidb/parser/ast"
+	"github.com/stretchr/testify/require"
 )
-
-var _ = Suite(&testAstFormatSuite{})
-
-type testAstFormatSuite struct {
-}
 
 func getDefaultCharsetAndCollate() (string, string) {
 	return "utf8", "utf8_bin"
 }
 
-func (ts *testAstFormatSuite) TestAstFormat(c *C) {
+func TestAstFormat(t *testing.T) {
 	var testcases = []struct {
 		input  string
 		output string
@@ -81,7 +77,7 @@ func (ts *testAstFormatSuite) TestAstFormat(c *C) {
 		{` cast( a as signed ) `, "CAST(`a` AS SIGNED)"},
 		{` cast( a as unsigned integer) `, "CAST(`a` AS UNSIGNED)"},
 		{` cast( a as char(3) binary) `, "CAST(`a` AS BINARY(3))"},
-		{` cast( a as decimal ) `, "CAST(`a` AS DECIMAL(11))"},
+		{` cast( a as decimal ) `, "CAST(`a` AS DECIMAL(10))"},
 		{` cast( a as decimal (3) ) `, "CAST(`a` AS DECIMAL(3))"},
 		{` cast( a as decimal (3,3) ) `, "CAST(`a` AS DECIMAL(3, 3))"},
 		{` ((case when (c0 = 0) then 0 when (c0 > 0) then (c1 / c0) end)) `, "((CASE WHEN (`c0` = 0) THEN 0 WHEN (`c0` > 0) THEN (`c1` / `c0`) END))"},
@@ -93,10 +89,10 @@ func (ts *testAstFormatSuite) TestAstFormat(c *C) {
 		charset, collation := getDefaultCharsetAndCollate()
 		stmts, _, err := parser.New().Parse(expr, charset, collation)
 		node := stmts[0].(*ast.SelectStmt).Fields.Fields[0].Expr
-		c.Assert(err, IsNil)
+		require.NoError(t, err)
 
 		writer := bytes.NewBufferString("")
 		node.Format(writer)
-		c.Assert(writer.String(), Equals, tt.output)
+		require.Equal(t, tt.output, writer.String())
 	}
 }

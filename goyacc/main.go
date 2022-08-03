@@ -142,10 +142,11 @@ import (
 	"strings"
 
 	"github.com/cznic/mathutil"
-	parser "github.com/cznic/parser/yacc"
 	"github.com/cznic/sortutil"
 	"github.com/cznic/strutil"
-	"github.com/cznic/y"
+	"golang.org/x/exp/slices"
+	parser "modernc.org/parser/yacc"
+	"modernc.org/y"
 )
 
 var (
@@ -324,7 +325,7 @@ func main1(in string) (err error) {
 	}
 
 	if fn := *oXErrorsGen; fn != "" {
-		f, err := os.OpenFile(fn, os.O_RDWR|os.O_CREATE, 0666)
+		f, err := os.OpenFile(fn, os.O_RDWR|os.O_CREATE, 0600)
 		if err != nil {
 			return err
 		}
@@ -396,7 +397,7 @@ type %[1]sXError struct {
 		}
 		nsyms[nm] = sym
 	}
-	sort.Strings(a)
+	slices.Sort(a)
 	mustFormat(f, "\nconst (%i\n")
 	for _, v := range a {
 		nm := v
@@ -528,6 +529,7 @@ type %[1]sLexer interface {
 	Lex(lval *%[1]sSymType) int
 	Errorf(format string, a ...interface{}) error
 	AppendError(err error)
+	AppendWarn(err error)
 	Errors() (warns []error, errs []error)
 }
 
@@ -790,8 +792,9 @@ yynewstate:
 	mustFormat(f, `%u
 	}
 
-
-	%[1]sSetOffset(parser.yyVAL, parser.yyVAL.offset)
+	if !parser.lexer.skipPositionRecording {
+		%[1]sSetOffset(parser.yyVAL, parser.yyVAL.offset)
+	}
 
 	if yyEx != nil && yyEx.Reduced(r, exState, parser.yyVAL) {
 		return -1

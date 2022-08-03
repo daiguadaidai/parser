@@ -18,9 +18,10 @@ package ast
 import (
 	"io"
 
-	"github.com/daiguadaidai/parser/format"
-	"github.com/daiguadaidai/parser/model"
-	"github.com/daiguadaidai/parser/types"
+	"github.com/pingcap/tidb/parser/charset"
+	"github.com/pingcap/tidb/parser/format"
+	"github.com/pingcap/tidb/parser/model"
+	"github.com/pingcap/tidb/parser/types"
 )
 
 // Node is the basic element of the AST.
@@ -37,16 +38,16 @@ type Node interface {
 	// children should be skipped. Otherwise, call its children in particular order that
 	// later elements depends on former elements. Finally, return visitor.Leave.
 	Accept(v Visitor) (node Node, ok bool)
-	// Text returns the original text of the element.
+	// Text returns the utf8 encoding text of the element.
 	Text() string
+	// OriginalText returns the original text of the element.
+	OriginalText() string
 	// SetText sets original text to the Node.
-	SetText(text string)
+	SetText(enc charset.Encoding, text string)
 	// SetOriginTextPosition set the start offset of this node in the origin text.
 	SetOriginTextPosition(offset int)
 	// OriginTextPosition get the start offset of this node in the origin text.
 	OriginTextPosition() int
-	// sql美化方法
-	Pretty(ctx *format.RestoreCtx, level, indent int64, char string) error
 }
 
 // Flags indicates whether an expression contains certain types of expression.
@@ -139,9 +140,11 @@ type ResultField struct {
 }
 
 // ResultSetNode interface has a ResultFields property, represents a Node that returns result set.
-// Implementations include SelectStmt, SubqueryExpr, TableSource, TableName and Join.
+// Implementations include SelectStmt, SubqueryExpr, TableSource, TableName, Join and SetOprStmt.
 type ResultSetNode interface {
 	Node
+
+	resultSet()
 }
 
 // SensitiveStmtNode overloads StmtNode and provides a SecureText method.

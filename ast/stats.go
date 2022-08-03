@@ -14,9 +14,9 @@
 package ast
 
 import (
-	"github.com/daiguadaidai/parser/format"
-	"github.com/daiguadaidai/parser/model"
 	"github.com/pingcap/errors"
+	"github.com/pingcap/tidb/parser/format"
+	"github.com/pingcap/tidb/parser/model"
 )
 
 var (
@@ -39,7 +39,9 @@ type AnalyzeTableStmt struct {
 	Incremental bool
 	// HistogramOperation is set in "ANALYZE TABLE ... UPDATE/DROP HISTOGRAM ..." statement.
 	HistogramOperation HistogramOperationType
-	ColumnNames        []*ColumnName
+	// ColumnNames indicate the columns whose statistics need to be collected.
+	ColumnNames  []model.CIStr
+	ColumnChoice model.ColumnChoice
 }
 
 // AnalyzeOptType is the type for analyze options.
@@ -52,6 +54,7 @@ const (
 	AnalyzeOptCMSketchDepth
 	AnalyzeOptCMSketchWidth
 	AnalyzeOptNumSamples
+	AnalyzeOptSampleRate
 )
 
 // AnalyzeOptionString stores the string form of analyze options.
@@ -61,6 +64,7 @@ var AnalyzeOptionString = map[AnalyzeOptionType]string{
 	AnalyzeOptCMSketchWidth: "CMSKETCH WIDTH",
 	AnalyzeOptCMSketchDepth: "CMSKETCH DEPTH",
 	AnalyzeOptNumSamples:    "SAMPLES",
+	AnalyzeOptSampleRate:    "SAMPLERATE",
 }
 
 // HistogramOperationType is the type for histogram operation.
@@ -88,7 +92,7 @@ func (hot HistogramOperationType) String() string {
 // AnalyzeOpt stores the analyze option type and value.
 type AnalyzeOpt struct {
 	Type  AnalyzeOptionType
-	Value uint64
+	Value ValueExpr
 }
 
 // Restore implements Node interface.
@@ -119,14 +123,28 @@ func (n *AnalyzeTableStmt) Restore(ctx *format.RestoreCtx) error {
 		ctx.WritePlain(" ")
 		ctx.WriteKeyWord(n.HistogramOperation.String())
 		ctx.WritePlain(" ")
+		if len(n.ColumnNames) > 0 {
+			ctx.WriteKeyWord("ON ")
+			for i, columnName := range n.ColumnNames {
+				if i != 0 {
+					ctx.WritePlain(",")
+				}
+				ctx.WriteName(columnName.O)
+			}
+		}
 	}
-	if len(n.ColumnNames) > 0 {
-		ctx.WriteKeyWord("ON ")
+	switch n.ColumnChoice {
+	case model.AllColumns:
+		ctx.WriteKeyWord(" ALL COLUMNS")
+	case model.PredicateColumns:
+		ctx.WriteKeyWord(" PREDICATE COLUMNS")
+	case model.ColumnList:
+		ctx.WriteKeyWord(" COLUMNS ")
 		for i, columnName := range n.ColumnNames {
 			if i != 0 {
 				ctx.WritePlain(",")
 			}
-			ctx.WriteName(columnName.Name.O)
+			ctx.WriteName(columnName.O)
 		}
 	}
 	if n.IndexFlag {
@@ -146,7 +164,7 @@ func (n *AnalyzeTableStmt) Restore(ctx *format.RestoreCtx) error {
 			if i != 0 {
 				ctx.WritePlain(",")
 			}
-			ctx.WritePlainf(" %d ", opt.Value)
+			ctx.WritePlainf(" %v ", opt.Value.GetValue())
 			ctx.WritePlain(AnalyzeOptionString[opt.Type])
 		}
 	}
@@ -174,7 +192,9 @@ func (n *AnalyzeTableStmt) Accept(v Visitor) (Node, bool) {
 type DropStatsStmt struct {
 	stmtNode
 
-	Table *TableName
+	Table          *TableName
+	PartitionNames []model.CIStr
+	IsGlobalStats  bool
 }
 
 // Restore implements Node interface.
@@ -184,6 +204,20 @@ func (n *DropStatsStmt) Restore(ctx *format.RestoreCtx) error {
 		return errors.Annotate(err, "An error occurred while add table")
 	}
 
+	if n.IsGlobalStats {
+		ctx.WriteKeyWord(" GLOBAL")
+		return nil
+	}
+
+	if len(n.PartitionNames) != 0 {
+		ctx.WriteKeyWord(" PARTITION ")
+	}
+	for i, partition := range n.PartitionNames {
+		if i != 0 {
+			ctx.WritePlain(",")
+		}
+		ctx.WriteName(partition.O)
+	}
 	return nil
 }
 

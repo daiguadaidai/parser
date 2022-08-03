@@ -20,10 +20,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/daiguadaidai/parser/format"
-	"github.com/daiguadaidai/parser/model"
-	"github.com/daiguadaidai/parser/opcode"
 	"github.com/pingcap/errors"
+	"github.com/pingcap/tidb/parser/format"
+	"github.com/pingcap/tidb/parser/model"
+	"github.com/pingcap/tidb/parser/opcode"
 )
 
 var (
@@ -173,6 +173,9 @@ func restoreBinaryOpWithSpacesAround(ctx *format.RestoreCtx, op opcode.Op) error
 
 // Restore implements Node interface.
 func (n *BinaryOperationExpr) Restore(ctx *format.RestoreCtx) error {
+	if ctx.Flags.HasRestoreBracketAroundBinaryOperation() {
+		ctx.WritePlain("(")
+	}
 	if err := n.L.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred when restore BinaryOperationExpr.L")
 	}
@@ -182,7 +185,9 @@ func (n *BinaryOperationExpr) Restore(ctx *format.RestoreCtx) error {
 	if err := n.R.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred when restore BinaryOperationExpr.R")
 	}
-
+	if ctx.Flags.HasRestoreBracketAroundBinaryOperation() {
+		ctx.WritePlain(")")
+	}
 	return nil
 }
 
@@ -364,6 +369,8 @@ type SubqueryExpr struct {
 	Exists     bool
 }
 
+func (*SubqueryExpr) resultSet() {}
+
 // Restore implements Node interface.
 func (n *SubqueryExpr) Restore(ctx *format.RestoreCtx) error {
 	ctx.WritePlain("(")
@@ -505,7 +512,7 @@ type ColumnName struct {
 
 // Restore implements Node interface.
 func (n *ColumnName) Restore(ctx *format.RestoreCtx) error {
-	if n.Schema.O != "" {
+	if n.Schema.O != "" && !ctx.IsCTETableName(n.Table.L) {
 		ctx.WriteName(n.Schema.O)
 		ctx.WritePlain(".")
 	}
@@ -902,7 +909,6 @@ func (n *PatternLikeExpr) Restore(ctx *format.RestoreCtx) error {
 	if escape != "\\" {
 		ctx.WriteKeyWord(" ESCAPE ")
 		ctx.WriteString(escape)
-
 	}
 	return nil
 }
@@ -1223,9 +1229,9 @@ func (n *ValuesExpr) Accept(v Visitor) (Node, bool) {
 	if !ok {
 		return n, false
 	}
-	// `node` may be *ast.ValueExpr, to avoid panic, we write `ok` but do not use
+	// `node` may be *ast.ValueExpr, to avoid panic, we write `_` and do not use
 	// it.
-	n.Column, ok = node.(*ColumnNameExpr)
+	n.Column, _ = node.(*ColumnNameExpr)
 	return v.Leave(n)
 }
 

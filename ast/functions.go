@@ -19,10 +19,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/daiguadaidai/parser/format"
-	"github.com/daiguadaidai/parser/model"
-	"github.com/daiguadaidai/parser/types"
 	"github.com/pingcap/errors"
+	"github.com/pingcap/tidb/parser/format"
+	"github.com/pingcap/tidb/parser/model"
+	"github.com/pingcap/tidb/parser/types"
 )
 
 var (
@@ -176,7 +176,12 @@ const (
 	Year             = "year"
 	YearWeek         = "yearweek"
 	LastDay          = "last_day"
-	TiDBParseTso     = "tidb_parse_tso"
+	// TSO functions
+	// TiDBBoundedStaleness is used to determine the TS for a read only request with the given bounded staleness.
+	// It will be used in the Stale Read feature.
+	// For more info, please see AsOfClause.
+	TiDBBoundedStaleness = "tidb_bounded_staleness"
+	TiDBParseTso         = "tidb_parse_tso"
 
 	// string functions
 	ASCII           = "ascii"
@@ -218,6 +223,7 @@ const (
 	SubstringIndex  = "substring_index"
 	ToBase64        = "to_base64"
 	Trim            = "trim"
+	Translate       = "translate"
 	Upper           = "upper"
 	Ucase           = "ucase"
 	Hex             = "hex"
@@ -229,29 +235,32 @@ const (
 	CharacterLength = "character_length"
 	FindInSet       = "find_in_set"
 	WeightString    = "weight_string"
+	Soundex         = "soundex"
 
 	// information functions
-	Benchmark      = "benchmark"
-	Charset        = "charset"
-	Coercibility   = "coercibility"
-	Collation      = "collation"
-	ConnectionID   = "connection_id"
-	CurrentUser    = "current_user"
-	CurrentRole    = "current_role"
-	Database       = "database"
-	FoundRows      = "found_rows"
-	LastInsertId   = "last_insert_id"
-	RowCount       = "row_count"
-	Schema         = "schema"
-	SessionUser    = "session_user"
-	SystemUser     = "system_user"
-	User           = "user"
-	Version        = "version"
-	TiDBVersion    = "tidb_version"
-	TiDBIsDDLOwner = "tidb_is_ddl_owner"
-	TiDBDecodePlan = "tidb_decode_plan"
-	FormatBytes    = "format_bytes"
-	FormatNanoTime = "format_nano_time"
+	Benchmark            = "benchmark"
+	Charset              = "charset"
+	Coercibility         = "coercibility"
+	Collation            = "collation"
+	ConnectionID         = "connection_id"
+	CurrentUser          = "current_user"
+	CurrentRole          = "current_role"
+	Database             = "database"
+	FoundRows            = "found_rows"
+	LastInsertId         = "last_insert_id"
+	RowCount             = "row_count"
+	Schema               = "schema"
+	SessionUser          = "session_user"
+	SystemUser           = "system_user"
+	User                 = "user"
+	Version              = "version"
+	TiDBVersion          = "tidb_version"
+	TiDBIsDDLOwner       = "tidb_is_ddl_owner"
+	TiDBDecodePlan       = "tidb_decode_plan"
+	TiDBDecodeBinaryPlan = "tidb_decode_binary_plan"
+	TiDBDecodeSQLDigests = "tidb_decode_sql_digests"
+	FormatBytes          = "format_bytes"
+	FormatNanoTime       = "format_nano_time"
 
 	// control functions
 	If     = "if"
@@ -271,6 +280,7 @@ const (
 	IsIPv4Mapped    = "is_ipv4_mapped"
 	IsIPv6          = "is_ipv6"
 	IsUsedLock      = "is_used_lock"
+	IsUUID          = "is_uuid"
 	MasterPosWait   = "master_pos_wait"
 	NameConst       = "name_const"
 	ReleaseAllLocks = "release_all_locks"
@@ -279,10 +289,10 @@ const (
 	UUIDShort       = "uuid_short"
 	UUIDToBin       = "uuid_to_bin"
 	BinToUUID       = "bin_to_uuid"
-	// get_lock() and release_lock() is parsed but do nothing.
-	// It is used for preventing error in Ruby's activerecord migrations.
-	GetLock     = "get_lock"
-	ReleaseLock = "release_lock"
+	VitessHash      = "vitess_hash"
+	TiDBShard       = "tidb_shard"
+	GetLock         = "get_lock"
+	ReleaseLock     = "release_lock"
 
 	// encryption and compression functions
 	AesDecrypt               = "aes_decrypt"
@@ -438,7 +448,7 @@ func (n *FuncCallExpr) Restore(ctx *format.RestoreCtx) error {
 			ctx.WritePlain(" ")
 			fallthrough
 		case 2:
-			if n.Args[1].(ValueExpr).GetValue() != nil {
+			if expr, isValue := n.Args[1].(ValueExpr); !isValue || expr.GetValue() != nil {
 				if err := n.Args[1].Restore(ctx); err != nil {
 					return errors.Annotatef(err, "An error occurred while restore FuncCallExpr.Args[1]")
 				}

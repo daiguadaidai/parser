@@ -15,15 +15,18 @@ package parser
 
 import (
 	"fmt"
-	"github.com/daiguadaidai/parser/terror"
 	"math"
 	"regexp"
 	"strconv"
 	"unicode"
 
-	"github.com/daiguadaidai/parser/ast"
-	"github.com/daiguadaidai/parser/mysql"
 	"github.com/pingcap/errors"
+	"github.com/pingcap/tidb/parser/ast"
+	"github.com/pingcap/tidb/parser/auth"
+	"github.com/pingcap/tidb/parser/charset"
+	"github.com/pingcap/tidb/parser/mysql"
+	"github.com/pingcap/tidb/parser/terror"
+	"github.com/pingcap/tidb/parser/types"
 )
 
 var (
@@ -52,7 +55,9 @@ var (
 	// ErrWarnDeprecatedSyntaxNoReplacement return when the syntax was deprecated and there is no replacement.
 	ErrWarnDeprecatedSyntaxNoReplacement = terror.ClassParser.NewStd(mysql.ErrWarnDeprecatedSyntaxNoReplacement)
 	// ErrWarnDeprecatedIntegerDisplayWidth share the same code 1681, and it will be returned when length is specified in integer.
-	ErrWarnDeprecatedIntegerDisplayWidth = terror.ClassParser.NewStdErr(mysql.ErrWarnDeprecatedSyntaxNoReplacement, mysql.Message("Integer display width is deprecated and will be removed in a future release.", nil), "", "")
+	ErrWarnDeprecatedIntegerDisplayWidth = terror.ClassParser.NewStdErr(mysql.ErrWarnDeprecatedSyntaxNoReplacement, mysql.Message("Integer display width is deprecated and will be removed in a future release.", nil))
+	// ErrWrongUsage returns for incorrect usages.
+	ErrWrongUsage = terror.ClassParser.NewStd(mysql.ErrWrongUsage)
 	// SpecFieldPattern special result field pattern
 	SpecFieldPattern = regexp.MustCompile(`(\/\*!(M?[0-9]{5,6})?|\*\/)`)
 	specCodeStart    = regexp.MustCompile(`^\/\*!(M?[0-9]{5,6})?[ \t]*`)
@@ -65,6 +70,17 @@ func TrimComment(txt string) string {
 	return specCodeEnd.ReplaceAllString(txt, "")
 }
 
+//revive:disable:exported
+
+// ParserConfig is the parser config.
+type ParserConfig struct {
+	EnableWindowFunction        bool
+	EnableStrictDoubleTypeCheck bool
+	SkipPositionRecording       bool
+}
+
+//revive:enable:exported
+
 // Parser represents a parser instance. Some temporary objects are stored in it to reduce object allocation during Parse function.
 type Parser struct {
 	charset    string
@@ -74,7 +90,8 @@ type Parser struct {
 	lexer      Scanner
 	hintParser *hintParser
 
-	explicitCharset bool
+	explicitCharset       bool
+	strictDoubleFieldType bool
 
 	// the following fields are used by yyParse to reduce allocation.
 	cache  []yySymType
@@ -101,35 +118,44 @@ func New() *Parser {
 		ast.NewParamMarkerExpr == nil ||
 		ast.NewHexLiteral == nil ||
 		ast.NewBitLiteral == nil {
-		panic("no parser driver (forgotten import?) https://github.com/daiguadaidai/parser/issues/43")
+		panic("no parser driver (forgotten import?) https://github.com/pingcap/parser/issues/43")
 	}
 
 	p := &Parser{
 		cache: make([]yySymType, 200),
 	}
 	p.EnableWindowFunc(true)
+	p.SetStrictDoubleTypeCheck(true)
 	mode, _ := mysql.GetSQLMode(mysql.DefaultSQLMode)
 	p.SetSQLMode(mode)
 	return p
 }
 
-// Parse parses a query string to raw ast.StmtNode.
-// If charset or collation is "", default charset and collation will be used.
-func (parser *Parser) Parse(sql, charset, collation string) (stmt []ast.StmtNode, warns []error, err error) {
-	if charset == "" {
-		charset = mysql.DefaultCharset
+// SetStrictDoubleTypeCheck enables/disables strict double type check.
+func (parser *Parser) SetStrictDoubleTypeCheck(val bool) {
+	parser.strictDoubleFieldType = val
+}
+
+// SetParserConfig sets the parser config.
+func (parser *Parser) SetParserConfig(config ParserConfig) {
+	parser.EnableWindowFunc(config.EnableWindowFunction)
+	parser.SetStrictDoubleTypeCheck(config.EnableStrictDoubleTypeCheck)
+	parser.lexer.skipPositionRecording = config.SkipPositionRecording
+}
+
+// ParseSQL parses a query string to raw ast.StmtNode.
+func (parser *Parser) ParseSQL(sql string, params ...ParseParam) (stmt []ast.StmtNode, warns []error, err error) {
+	resetParams(parser)
+	parser.lexer.reset(sql)
+	for _, p := range params {
+		if err := p.ApplyOn(parser); err != nil {
+			return nil, nil, err
+		}
 	}
-	if collation == "" {
-		collation = mysql.DefaultCollationName
-	}
-	parser.charset = charset
-	parser.collation = collation
 	parser.src = sql
 	parser.result = parser.result[:0]
 
-	var l yyLexer
-	parser.lexer.reset(sql)
-	l = &parser.lexer
+	var l yyLexer = &parser.lexer
 	yyParse(l, parser)
 
 	warns, errs := l.Errors()
@@ -147,6 +173,12 @@ func (parser *Parser) Parse(sql, charset, collation string) (stmt []ast.StmtNode
 	return parser.result, warns, nil
 }
 
+// Parse parses a query string to raw ast.StmtNode.
+// If charset or collation is "", default charset and collation will be used.
+func (parser *Parser) Parse(sql, charset, collation string) (stmt []ast.StmtNode, warns []error, err error) {
+	return parser.ParseSQL(sql, CharsetConnection(charset), CollationConnection(collation))
+}
+
 func (parser *Parser) lastErrorAsWarn() {
 	parser.lexer.lastErrorAsWarn()
 }
@@ -154,7 +186,7 @@ func (parser *Parser) lastErrorAsWarn() {
 // ParseOneStmt parses a query and returns an ast.StmtNode.
 // The query must have one statement, otherwise ErrSyntax is returned.
 func (parser *Parser) ParseOneStmt(sql, charset, collation string) (ast.StmtNode, error) {
-	stmts, _, err := parser.Parse(sql, charset, collation)
+	stmts, _, err := parser.ParseSQL(sql, CharsetConnection(charset), CollationConnection(collation))
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -191,12 +223,12 @@ func (parser *Parser) setLastSelectFieldText(st *ast.SelectStmt, lastEnd int) {
 		return
 	}
 	lastField := st.Fields.Fields[len(st.Fields.Fields)-1]
-	if lastField.Offset+len(lastField.Text()) >= len(parser.src)-1 {
-		lastField.SetText(parser.src[lastField.Offset:lastEnd])
+	if lastField.Offset+len(lastField.OriginalText()) >= len(parser.src)-1 {
+		lastField.SetText(parser.lexer.client, parser.src[lastField.Offset:lastEnd])
 	}
 }
 
-func (parser *Parser) startOffset(v *yySymType) int {
+func (*Parser) startOffset(v *yySymType) int {
 	return v.offset
 }
 
@@ -231,7 +263,7 @@ func toInt(l yyLexer, lval *yySymType, str string) int {
 			return toDecimal(l, lval, str)
 		}
 		l.AppendError(l.Errorf("integer literal: %v", err))
-		return int(unicode.ReplacementChar)
+		return invalid
 	}
 
 	switch {
@@ -246,7 +278,12 @@ func toInt(l yyLexer, lval *yySymType, str string) int {
 func toDecimal(l yyLexer, lval *yySymType, str string) int {
 	dec, err := ast.NewDecimal(str)
 	if err != nil {
-		l.AppendError(l.Errorf("decimal literal: %v", err))
+		if terror.ErrorEqual(err, types.ErrDataOutOfRange) {
+			l.AppendWarn(types.ErrTruncatedWrongValue.FastGenByArgs("DECIMAL", dec))
+			dec, _ = ast.NewDecimal(mysql.DefaultDecimal)
+		} else {
+			l.AppendError(l.Errorf("decimal literal: %v", err))
+		}
 	}
 	lval.item = dec
 	return decLit
@@ -255,8 +292,13 @@ func toDecimal(l yyLexer, lval *yySymType, str string) int {
 func toFloat(l yyLexer, lval *yySymType, str string) int {
 	n, err := strconv.ParseFloat(str, 64)
 	if err != nil {
+		e := err.(*strconv.NumError)
+		if e.Err == strconv.ErrRange {
+			l.AppendError(types.ErrIllegalValueForType.GenWithStackByArgs("double", str))
+			return invalid
+		}
 		l.AppendError(l.Errorf("float literal: %v", err))
-		return int(unicode.ReplacementChar)
+		return invalid
 	}
 
 	lval.item = n
@@ -268,7 +310,7 @@ func toHex(l yyLexer, lval *yySymType, str string) int {
 	h, err := ast.NewHexLiteral(str)
 	if err != nil {
 		l.AppendError(l.Errorf("hex literal: %v", err))
-		return int(unicode.ReplacementChar)
+		return invalid
 	}
 	lval.item = h
 	return hexLit
@@ -279,7 +321,7 @@ func toBit(l yyLexer, lval *yySymType, str string) int {
 	b, err := ast.NewBitLiteral(str)
 	if err != nil {
 		l.AppendError(l.Errorf("bit literal: %v", err))
-		return int(unicode.ReplacementChar)
+		return invalid
 	}
 	lval.item = b
 	return bitLit
@@ -299,6 +341,107 @@ func getInt64FromNUM(num interface{}) (val int64, errMsg string) {
 	switch v := num.(type) {
 	case int64:
 		return v, ""
+	default:
+		return -1, fmt.Sprintf("%d is out of range [–9223372036854775808,9223372036854775807]", num)
 	}
-	return -1, fmt.Sprintf("%d is out of range [–9223372036854775808,9223372036854775807]", num)
+}
+
+func isRevokeAllGrant(roleOrPrivList []*ast.RoleOrPriv) bool {
+	if len(roleOrPrivList) != 2 {
+		return false
+	}
+	priv, err := roleOrPrivList[0].ToPriv()
+	if err != nil {
+		return false
+	}
+	if priv.Priv != mysql.AllPriv {
+		return false
+	}
+	priv, err = roleOrPrivList[1].ToPriv()
+	if err != nil {
+		return false
+	}
+	if priv.Priv != mysql.GrantPriv {
+		return false
+	}
+	return true
+}
+
+// convertToRole tries to convert elements of roleOrPrivList to RoleIdentity
+func convertToRole(roleOrPrivList []*ast.RoleOrPriv) ([]*auth.RoleIdentity, error) {
+	var roles []*auth.RoleIdentity
+	for _, elem := range roleOrPrivList {
+		role, err := elem.ToRole()
+		if err != nil {
+			return nil, err
+		}
+		roles = append(roles, role)
+	}
+	return roles, nil
+}
+
+// convertToPriv tries to convert elements of roleOrPrivList to PrivElem
+func convertToPriv(roleOrPrivList []*ast.RoleOrPriv) ([]*ast.PrivElem, error) {
+	var privileges []*ast.PrivElem
+	for _, elem := range roleOrPrivList {
+		priv, err := elem.ToPriv()
+		if err != nil {
+			return nil, err
+		}
+		privileges = append(privileges, priv)
+	}
+	return privileges, nil
+}
+
+var (
+	_ ParseParam = CharsetConnection("")
+	_ ParseParam = CollationConnection("")
+	_ ParseParam = CharsetClient("")
+)
+
+func resetParams(p *Parser) {
+	p.charset = mysql.DefaultCharset
+	p.collation = mysql.DefaultCollationName
+}
+
+// ParseParam represents the parameter of parsing.
+type ParseParam interface {
+	ApplyOn(*Parser) error
+}
+
+// CharsetConnection is used for literals specified without a character set.
+type CharsetConnection string
+
+// ApplyOn implements ParseParam interface.
+func (c CharsetConnection) ApplyOn(p *Parser) error {
+	if c == "" {
+		p.charset = mysql.DefaultCharset
+	} else {
+		p.charset = string(c)
+	}
+	p.lexer.connection = charset.FindEncoding(string(c))
+	return nil
+}
+
+// CollationConnection is used for literals specified without a collation.
+type CollationConnection string
+
+// ApplyOn implements ParseParam interface.
+func (c CollationConnection) ApplyOn(p *Parser) error {
+	if c == "" {
+		p.collation = mysql.DefaultCollationName
+	} else {
+		p.collation = string(c)
+	}
+	return nil
+}
+
+// CharsetClient specifies the charset of a SQL.
+// This is used to decode the SQL into a utf-8 string.
+type CharsetClient string
+
+// ApplyOn implements ParseParam interface.
+func (c CharsetClient) ApplyOn(p *Parser) error {
+	p.lexer.client = charset.FindEncoding(string(c))
+	return nil
 }

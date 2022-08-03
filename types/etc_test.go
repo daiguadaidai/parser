@@ -1,4 +1,4 @@
-// Copyright 2019 PingCAP, Inc.
+// Copyright 2021 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,7 +11,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package parser
+package types
 
-// WindowFuncTokenMapForTest exports windowFuncTokenMap in test-case
-var WindowFuncTokenMapForTest = windowFuncTokenMap
+import (
+	"testing"
+
+	"github.com/pingcap/tidb/parser/mysql"
+	"github.com/stretchr/testify/require"
+)
+
+func TestStrToType(t *testing.T) {
+	for tp, str := range type2Str {
+		a := StrToType(str)
+		require.Equal(t, tp, a)
+	}
+
+	tp := StrToType("blob")
+	require.Equal(t, tp, mysql.TypeBlob)
+
+	tp = StrToType("binary")
+	require.Equal(t, tp, mysql.TypeString)
+}

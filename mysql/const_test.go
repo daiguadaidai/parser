@@ -1,4 +1,4 @@
-// Copyright 2017 PingCAP, Inc.
+// Copyright 2021 PingCAP, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,44 +16,10 @@ package mysql
 import (
 	"testing"
 
-	. "github.com/pingcap/check"
+	"github.com/stretchr/testify/require"
 )
 
-var _ = Suite(&testConstSuite{})
-
-type testConstSuite struct{}
-
-func TestT(t *testing.T) {
-	TestingT(t)
-}
-
-func (s *testConstSuite) TestPrivAllConsistency(c *C) {
-	// AllPriv in mysql.user columns.
-	for priv := PrivilegeType(CreatePriv); priv != AllPriv; priv = priv << 1 {
-		_, ok := Priv2UserCol[priv]
-		c.Assert(ok, IsTrue, Commentf("priv fail %d", priv))
-	}
-
-	for _, v := range AllGlobalPrivs {
-		_, ok := Priv2UserCol[v]
-		c.Assert(ok, IsTrue)
-	}
-
-	c.Assert(len(Priv2UserCol), Equals, len(AllGlobalPrivs)+1)
-
-	for _, v := range Priv2UserCol {
-		_, ok := Col2PrivType[v]
-		c.Assert(ok, IsTrue)
-	}
-	for _, v := range Col2PrivType {
-		_, ok := Priv2UserCol[v]
-		c.Assert(ok, IsTrue)
-	}
-
-	c.Assert(len(Priv2Str), Equals, len(Priv2UserCol))
-}
-
-func (s *testConstSuite) TestSQLMode(c *C) {
+func TestSQLMode(t *testing.T) {
 	// ref https://dev.mysql.com/doc/internals/en/query-event.html#q-sql-mode-code,
 	hardCode := []struct {
 		code  SQLMode
@@ -125,6 +91,6 @@ func (s *testConstSuite) TestSQLMode(c *C) {
 	}}
 
 	for _, ca := range hardCode {
-		c.Assert(int(ca.code), Equals, ca.value)
+		require.Equal(t, ca.value, int(ca.code))
 	}
 }

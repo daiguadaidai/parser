@@ -11,7 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//+build !codes
+//go:build !codes
+// +build !codes
 
 package test_driver
 
@@ -223,7 +224,7 @@ func (d *MyDecimal) FromString(str []byte) error {
 	}
 	wordsInt := digitsToWords(digitsInt)
 	wordsFrac := digitsToWords(digitsFrac)
-	wordsInt, wordsFrac, err := fixWordCntError(wordsInt, wordsFrac)
+	wordsInt, _, err := fixWordCntError(wordsInt, wordsFrac)
 	if err != nil {
 		panic(panicInfo)
 	}
