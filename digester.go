@@ -23,7 +23,7 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/pingcap/tidb/parser/charset"
+	"github.com/daiguadaidai/parser/charset"
 )
 
 // Digest stores the fixed length hash value.

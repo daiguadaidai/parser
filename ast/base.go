@@ -16,8 +16,8 @@ package ast
 import (
 	"sync"
 
-	"github.com/pingcap/tidb/parser/charset"
-	"github.com/pingcap/tidb/parser/types"
+	"github.com/daiguadaidai/parser/charset"
+	"github.com/daiguadaidai/parser/types"
 )
 
 // node is the struct implements Node interface except for Accept method.

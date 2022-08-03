@@ -14,7 +14,7 @@
 package ast
 
 import (
-	"github.com/pingcap/tidb/parser/format"
+	"github.com/daiguadaidai/parser/format"
 )
 
 var _ StmtNode = &IndexAdviseStmt{}

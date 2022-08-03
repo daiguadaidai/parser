@@ -8,7 +8,7 @@ go_library(
         "test_driver_helper.go",
         "test_driver_mydecimal.go",
     ],
-    importpath = "github.com/pingcap/tidb/parser/test_driver",
+    importpath = "github.com/daiguadaidai/parser/test_driver",
     visibility = ["//visibility:public"],
     deps = [
         "//parser/ast",

@@ -20,11 +20,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/daiguadaidai/parser/auth"
+	"github.com/daiguadaidai/parser/charset"
+	"github.com/daiguadaidai/parser/mysql"
+	"github.com/daiguadaidai/parser/types"
 	"github.com/pingcap/errors"
-	"github.com/pingcap/tidb/parser/auth"
-	"github.com/pingcap/tidb/parser/charset"
-	"github.com/pingcap/tidb/parser/mysql"
-	"github.com/pingcap/tidb/parser/types"
 )
 
 // SchemaState is the state for schema elements.
@@ -368,7 +368,7 @@ const (
 	// TableInfoVersion4 indicates that the auto_increment allocator in TiDB has been separated from
 	// _tidb_rowid allocator. This version is introduced to preserve the compatibility of old tables:
 	// the tables with version < TableInfoVersion4 still use a single allocator for auto_increment and _tidb_rowid.
-	// Also see https://github.com/pingcap/tidb/issues/982.
+	// Also see https://github.com/daiguadaidai/issues/982.
 	TableInfoVersion4 = uint16(4)
 
 	// CurrLatestTableInfoVersion means the latest table info in the current TiDB.
@@ -1499,7 +1499,7 @@ func NewCIStr(s string) (cs CIStr) {
 
 // UnmarshalJSON implements the user defined unmarshal method.
 // CIStr can be unmarshaled from a single string, so PartitionDefinition.Name
-// in this change https://github.com/pingcap/tidb/pull/6460/files would be
+// in this change https://github.com/daiguadaidai/pull/6460/files would be
 // compatible during TiDB upgrading.
 func (cis *CIStr) UnmarshalJSON(b []byte) error {
 	type T CIStr

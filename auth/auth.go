@@ -16,7 +16,7 @@ package auth
 import (
 	"fmt"
 
-	"github.com/pingcap/tidb/parser/format"
+	"github.com/daiguadaidai/parser/format"
 )
 
 const (

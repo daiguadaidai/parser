@@ -20,9 +20,9 @@ import (
 	"strings"
 
 	"github.com/cznic/mathutil"
-	"github.com/pingcap/tidb/parser/charset"
-	"github.com/pingcap/tidb/parser/format"
-	"github.com/pingcap/tidb/parser/mysql"
+	"github.com/daiguadaidai/parser/charset"
+	"github.com/daiguadaidai/parser/format"
+	"github.com/daiguadaidai/parser/mysql"
 )
 
 // UnspecifiedLength is unspecified length.

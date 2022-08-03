@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pingcap/tidb/parser"
+	"github.com/daiguadaidai/parser"
 	"github.com/stretchr/testify/require"
 )
 

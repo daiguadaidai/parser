@@ -18,10 +18,10 @@ package ast
 import (
 	"io"
 
-	"github.com/pingcap/tidb/parser/charset"
-	"github.com/pingcap/tidb/parser/format"
-	"github.com/pingcap/tidb/parser/model"
-	"github.com/pingcap/tidb/parser/types"
+	"github.com/daiguadaidai/parser/charset"
+	"github.com/daiguadaidai/parser/format"
+	"github.com/daiguadaidai/parser/model"
+	"github.com/daiguadaidai/parser/types"
 )
 
 // Node is the basic element of the AST.

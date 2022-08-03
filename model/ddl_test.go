@@ -17,7 +17,7 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/pingcap/tidb/parser/model"
+	"github.com/daiguadaidai/parser/model"
 	"github.com/stretchr/testify/require"
 )
 

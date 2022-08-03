@@ -14,9 +14,9 @@
 package ast
 
 import (
+	"github.com/daiguadaidai/parser/format"
+	"github.com/daiguadaidai/parser/model"
 	"github.com/pingcap/errors"
-	"github.com/pingcap/tidb/parser/format"
-	"github.com/pingcap/tidb/parser/model"
 )
 
 var (

@@ -7,7 +7,7 @@ go_library(
         "caching_sha2.go",
         "mysql_native_password.go",
     ],
-    importpath = "github.com/pingcap/tidb/parser/auth",
+    importpath = "github.com/daiguadaidai/parser/auth",
     visibility = ["//visibility:public"],
     deps = [
         "//parser/format",

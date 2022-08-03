@@ -131,7 +131,7 @@ type customGBKDecoder struct {
 }
 
 // Transform special treatment for 0x80,
-// see https://github.com/pingcap/tidb/issues/30581 get details.
+// see https://github.com/daiguadaidai/issues/30581 get details.
 func (c customGBKDecoder) Transform(dst, src []byte, atEOF bool) (nDst, nSrc int, err error) {
 	if len(src) == 0 {
 		return 0, 0, nil
@@ -161,7 +161,7 @@ func (customGBK) NewEncoder() *encoding.Encoder {
 }
 
 // Transform special treatment for `€`,
-// see https://github.com/pingcap/tidb/issues/30581 get details.
+// see https://github.com/daiguadaidai/issues/30581 get details.
 func (c customGBKEncoder) Transform(dst, src []byte, atEOF bool) (nDst, nSrc int, err error) {
 	if bytes.HasPrefix(src, []byte{0xe2, 0x82, 0xac} /* '€' */) {
 		return 0, 0, ErrInvalidCharacterString

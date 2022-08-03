@@ -19,10 +19,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/daiguadaidai/parser/format"
+	"github.com/daiguadaidai/parser/model"
+	"github.com/daiguadaidai/parser/types"
 	"github.com/pingcap/errors"
-	"github.com/pingcap/tidb/parser/format"
-	"github.com/pingcap/tidb/parser/model"
-	"github.com/pingcap/tidb/parser/types"
 )
 
 var (

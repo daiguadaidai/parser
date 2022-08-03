@@ -24,8 +24,8 @@ import (
 	"strings"
 
 	"github.com/cznic/strutil"
+	"github.com/daiguadaidai/parser/format"
 	"github.com/pingcap/errors"
-	"github.com/pingcap/tidb/parser/format"
 	parser "modernc.org/parser/yacc"
 )
 

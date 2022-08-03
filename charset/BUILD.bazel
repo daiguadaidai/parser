@@ -13,7 +13,7 @@ go_library(
         "encoding_table.go",
         "encoding_utf8.go",
     ],
-    importpath = "github.com/pingcap/tidb/parser/charset",
+    importpath = "github.com/daiguadaidai/parser/charset",
     visibility = ["//visibility:public"],
     deps = [
         "//parser/mysql",

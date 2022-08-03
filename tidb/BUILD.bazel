@@ -3,6 +3,6 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "tidb",
     srcs = ["features.go"],
-    importpath = "github.com/pingcap/tidb/parser/tidb",
+    importpath = "github.com/daiguadaidai/parser/tidb",
     visibility = ["//visibility:public"],
 )

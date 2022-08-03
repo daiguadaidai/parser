@@ -17,9 +17,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pingcap/tidb/parser/ast"
-	"github.com/pingcap/tidb/parser/mysql"
-	"github.com/pingcap/tidb/parser/terror"
+	"github.com/daiguadaidai/parser/ast"
+	"github.com/daiguadaidai/parser/mysql"
+	"github.com/daiguadaidai/parser/terror"
 )
 
 //revive:disable:exported

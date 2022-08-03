@@ -28,13 +28,13 @@ package parser
 import (
 	"strings"
 
-	"github.com/pingcap/tidb/parser/mysql"
-	"github.com/pingcap/tidb/parser/ast"
-	"github.com/pingcap/tidb/parser/model"
-	"github.com/pingcap/tidb/parser/opcode"
-	"github.com/pingcap/tidb/parser/auth"
-	"github.com/pingcap/tidb/parser/charset"
-	"github.com/pingcap/tidb/parser/types"
+	"github.com/daiguadaidai/parser/mysql"
+	"github.com/daiguadaidai/parser/ast"
+	"github.com/daiguadaidai/parser/model"
+	"github.com/daiguadaidai/parser/opcode"
+	"github.com/daiguadaidai/parser/auth"
+	"github.com/daiguadaidai/parser/charset"
+	"github.com/daiguadaidai/parser/types"
 )
 
 %}

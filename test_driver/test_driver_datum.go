@@ -24,10 +24,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/daiguadaidai/parser/charset"
+	"github.com/daiguadaidai/parser/mysql"
+	"github.com/daiguadaidai/parser/types"
 	"github.com/pingcap/errors"
-	"github.com/pingcap/tidb/parser/charset"
-	"github.com/pingcap/tidb/parser/mysql"
-	"github.com/pingcap/tidb/parser/types"
 )
 
 // Kind constants.

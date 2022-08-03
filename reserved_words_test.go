@@ -32,8 +32,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/daiguadaidai/parser/ast"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/pingcap/tidb/parser/ast"
 	requires "github.com/stretchr/testify/require"
 )
 

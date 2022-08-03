@@ -14,11 +14,11 @@
 package ast
 
 import (
+	"github.com/daiguadaidai/parser/auth"
+	"github.com/daiguadaidai/parser/format"
+	"github.com/daiguadaidai/parser/model"
+	"github.com/daiguadaidai/parser/mysql"
 	"github.com/pingcap/errors"
-	"github.com/pingcap/tidb/parser/auth"
-	"github.com/pingcap/tidb/parser/format"
-	"github.com/pingcap/tidb/parser/model"
-	"github.com/pingcap/tidb/parser/mysql"
 )
 
 var (

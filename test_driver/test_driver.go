@@ -18,13 +18,14 @@ package test_driver
 
 import (
 	"fmt"
+	"github.com/daiguadaidai/parser/utils"
 	"io"
 	"strconv"
 
-	"github.com/pingcap/tidb/parser/ast"
-	"github.com/pingcap/tidb/parser/charset"
-	"github.com/pingcap/tidb/parser/format"
-	"github.com/pingcap/tidb/parser/mysql"
+	"github.com/daiguadaidai/parser/ast"
+	"github.com/daiguadaidai/parser/charset"
+	"github.com/daiguadaidai/parser/format"
+	"github.com/daiguadaidai/parser/mysql"
 )
 
 func init() {
@@ -79,11 +80,11 @@ func (n *ValueExpr) Restore(ctx *format.RestoreCtx) error {
 	case KindFloat64:
 		ctx.WritePlain(strconv.FormatFloat(n.GetFloat64(), 'e', -1, 64))
 	case KindString:
-		if n.Type.GetCharset() != "" {
-			ctx.WritePlain("_")
-			ctx.WriteKeyWord(n.Type.GetCharset())
+		s, err := utils.GetSqlStrValue(n.GetString(), "")
+		if err != nil {
+			return err
 		}
-		ctx.WriteString(n.GetString())
+		ctx.WriteString(s)
 	case KindBytes:
 		ctx.WriteString(n.GetString())
 	case KindMysqlDecimal:

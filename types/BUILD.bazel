@@ -7,7 +7,7 @@ go_library(
         "eval_type.go",
         "field_type.go",
     ],
-    importpath = "github.com/pingcap/tidb/parser/types",
+    importpath = "github.com/daiguadaidai/parser/types",
     visibility = ["//visibility:public"],
     deps = [
         "//parser/charset",

@@ -17,8 +17,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/daiguadaidai/parser/format"
 	"github.com/pingcap/errors"
-	"github.com/pingcap/tidb/parser/format"
 )
 
 func newInvalidModeErr(s string) error {

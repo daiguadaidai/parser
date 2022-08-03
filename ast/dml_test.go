@@ -16,8 +16,8 @@ package ast_test
 import (
 	"testing"
 
-	. "github.com/pingcap/tidb/parser/ast"
-	"github.com/pingcap/tidb/parser/format"
+	. "github.com/daiguadaidai/parser/ast"
+	"github.com/daiguadaidai/parser/format"
 	"github.com/stretchr/testify/require"
 )
 

@@ -18,7 +18,7 @@ package ast
 import (
 	"testing"
 
-	"github.com/pingcap/tidb/parser/charset"
+	"github.com/daiguadaidai/parser/charset"
 	"github.com/stretchr/testify/require"
 )
 

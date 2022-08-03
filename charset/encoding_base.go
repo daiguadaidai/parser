@@ -20,8 +20,8 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/pingcap/tidb/parser/mysql"
-	"github.com/pingcap/tidb/parser/terror"
+	"github.com/daiguadaidai/parser/mysql"
+	"github.com/daiguadaidai/parser/terror"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/transform"
 )

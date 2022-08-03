@@ -19,8 +19,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/daiguadaidai/parser/terror"
 	"github.com/pingcap/errors"
-	"github.com/pingcap/tidb/parser/terror"
 )
 
 // CheckScrambledPassword check scrambled password received from client.

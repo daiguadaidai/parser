@@ -20,16 +20,16 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/daiguadaidai/parser"
+	"github.com/daiguadaidai/parser/ast"
+	"github.com/daiguadaidai/parser/charset"
+	. "github.com/daiguadaidai/parser/format"
+	"github.com/daiguadaidai/parser/model"
+	"github.com/daiguadaidai/parser/mysql"
+	"github.com/daiguadaidai/parser/opcode"
+	"github.com/daiguadaidai/parser/terror"
+	"github.com/daiguadaidai/parser/test_driver"
 	"github.com/pingcap/errors"
-	"github.com/pingcap/tidb/parser"
-	"github.com/pingcap/tidb/parser/ast"
-	"github.com/pingcap/tidb/parser/charset"
-	. "github.com/pingcap/tidb/parser/format"
-	"github.com/pingcap/tidb/parser/model"
-	"github.com/pingcap/tidb/parser/mysql"
-	"github.com/pingcap/tidb/parser/opcode"
-	"github.com/pingcap/tidb/parser/terror"
-	"github.com/pingcap/tidb/parser/test_driver"
 	"github.com/stretchr/testify/require"
 )
 
@@ -119,7 +119,7 @@ func TestSimple(t *testing.T) {
 
 	// Testcase for /*! xx */
 	// See http://dev.mysql.com/doc/refman/5.7/en/comments.html
-	// Fix: https://github.com/pingcap/tidb/issues/971
+	// Fix: https://github.com/daiguadaidai/issues/971
 	src = "/*!40101 SET character_set_client = utf8 */;"
 	stmts, _, err = p.Parse(src, "", "")
 	require.NoError(t, err)
@@ -877,13 +877,13 @@ func TestDMLStmt(t *testing.T) {
 		{"select 1 as a from dual where 1 < any (select 2) order by a", true, "SELECT 1 AS `a` FROM DUAL WHERE 1<ANY (SELECT 2) ORDER BY `a`"},
 		{"select 1 order by 1", true, "SELECT 1 ORDER BY 1"},
 
-		// for https://github.com/pingcap/tidb/issues/320
+		// for https://github.com/daiguadaidai/issues/320
 		{`(select 1);`, true, "(SELECT 1)"},
 
-		// https://github.com/pingcap/tidb/issues/14297
+		// https://github.com/daiguadaidai/issues/14297
 		{"select 1 where 1=1", true, "SELECT 1 FROM DUAL WHERE 1=1"},
 
-		// https://github.com/pingcap/tidb/issues/24496
+		// https://github.com/daiguadaidai/issues/24496
 		{"select 1 group by 1", true, "SELECT 1 GROUP BY 1"},
 		{"select 1 from dual group by 1", true, "SELECT 1 GROUP BY 1"},
 
@@ -891,7 +891,7 @@ func TestDMLStmt(t *testing.T) {
 		{"select min(b) b from (select min(t.b) b from t where t.a = '');", true, "SELECT MIN(`b`) AS `b` FROM (SELECT MIN(`t`.`b`) AS `b` FROM `t` WHERE `t`.`a`=_UTF8MB4'')"},
 		{"select min(b) b from (select min(t.b) b from t where t.a = '') as t1;", true, "SELECT MIN(`b`) AS `b` FROM (SELECT MIN(`t`.`b`) AS `b` FROM `t` WHERE `t`.`a`=_UTF8MB4'') AS `t1`"},
 
-		// for https://github.com/pingcap/tidb/issues/1050
+		// for https://github.com/daiguadaidai/issues/1050
 		{`SELECT /*!40001 SQL_NO_CACHE */ * FROM test WHERE 1 limit 0, 2000;`, true, "SELECT SQL_NO_CACHE * FROM `test` WHERE 1 LIMIT 0,2000"},
 
 		{`ANALYZE TABLE t`, true, "ANALYZE TABLE `t`"},
@@ -3091,7 +3091,7 @@ func TestDDL(t *testing.T) {
 		{"ALTER TABLE t PARTITION p ATTRIBUTES=default", true, "ALTER TABLE `t` PARTITION `p` ATTRIBUTES=DEFAULT"},
 		{"ALTER TABLE t PARTITION p ATTRIBUTES=DeFaUlT", true, "ALTER TABLE `t` PARTITION `p` ATTRIBUTES=DEFAULT"},
 		{"ALTER TABLE t PARTITION p ATTRIBUTES", false, ""},
-		// For https://github.com/pingcap/tidb/issues/26778
+		// For https://github.com/daiguadaidai/issues/26778
 		{"CREATE TABLE t1 (attributes int);", true, "CREATE TABLE `t1` (`attributes` INT)"},
 
 		// For create index statement
