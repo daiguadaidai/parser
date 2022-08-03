@@ -13,7 +13,6 @@ warpStr: 最后元数据需要使用什么包括
 */
 func GetSqlStrValue(data string, wrapStr string) (string, error) {
 	oriStrRunes := []rune(data)
-	fmt.Println(oriStrRunes)
 
 	var sb strings.Builder
 	// 添加开头单引号
