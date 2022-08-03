@@ -554,6 +554,7 @@ import (
 	session               "SESSION"
 	setval                "SETVAL"
 	shardRowIDBits        "SHARD_ROW_ID_BITS"
+	shardKey              "SHARDKEY"
 	share                 "SHARE"
 	shared                "SHARED"
 	shutdown              "SHUTDOWN"
@@ -4132,6 +4133,10 @@ PartDefOption:
 			StrValue:  placementOptions.StrValue,
 			UintValue: placementOptions.UintValue,
 		}
+	}
+|	"SHARDKEY" EqOpt StringName
+	{
+		$$ = &ast.TableOption{Tp: ast.TableOptionTdsqlShardKey, StrValue: $3}
 	}
 
 PartDefValuesOpt:

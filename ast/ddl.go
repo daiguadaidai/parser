@@ -2051,6 +2051,7 @@ const (
 	TableOptionTableCheckSum
 	TableOptionUnion
 	TableOptionEncryption
+	TableOptionTdsqlShardKey
 	TableOptionPlacementPolicy = TableOptionType(PlacementOptionPolicy)
 	TableOptionStatsBuckets    = TableOptionType(StatsOptionBuckets)
 	TableOptionStatsTopN       = TableOptionType(StatsOptionTopN)
@@ -2379,6 +2380,10 @@ func (n *TableOption) Restore(ctx *format.RestoreCtx) error {
 		} else {
 			ctx.WriteString(n.StrValue)
 		}
+	case TableOptionTdsqlShardKey:
+		ctx.WriteKeyWord("SHARDKEY ")
+		ctx.WritePlain("= ")
+		ctx.WritePlain(n.StrValue)
 	default:
 		return errors.Errorf("invalid TableOption: %d", n.Tp)
 	}
