@@ -28,3 +28,19 @@ func TestRestoreInsertStr_01(t *testing.T) {
 		fmt.Println(restoreSql)
 	}
 }
+
+func TestStoreExplainStmt(t *testing.T) {
+	query := `EXPLAIN SELECT * FROM emp;`
+	p := parser.New()
+	node, err := p.ParseOneStmt(query, "", "")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	restoreSql, err := RestoreSql(node)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	fmt.Println(restoreSql)
+}

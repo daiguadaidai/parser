@@ -231,7 +231,7 @@ func (n *ExplainStmt) Restore(ctx *format.RestoreCtx) error {
 	if n.Analyze {
 		ctx.WriteKeyWord("ANALYZE ")
 	}
-	if !n.Analyze && strings.ToLower(n.Format) != "" {
+	if n.Analyze || strings.ToLower(n.Format) != "row" {
 		ctx.WriteKeyWord("FORMAT ")
 		ctx.WritePlain("= ")
 		ctx.WriteString(n.Format)
